@@ -1,0 +1,16 @@
+# Sync with `libcxxext/.clangd`.
+
+CompileFlags:
+    Add:
+        - "-I../src"
+        - "-I../libcxxext/sys"
+        - "-I../libcxxext/sys.Threading"
+        - "-I../libcxxext/sys.Threading/platform"
+        - -xc++
+        - -std=c++26
+    Remove:
+        - -fconcepts-diagnostics-depth=4
+    CompilationDatabase: build
+
+Index:
+    StandardLibrary: true

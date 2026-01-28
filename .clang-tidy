@@ -1,0 +1,79 @@
+# Sync with `libcxxext/.clang-tidy`.
+
+Checks: >
+    -*,
+
+    bugprone-*, cert-err33-c, cert-flp30-c, clang-analyzer-*, concurrency-*, cppcoreguidelines-*, google-*, hicpp-*, llvm-*, misc-*, modernize-*, performance-*, portability-*,
+    readability-*,
+
+    -bugprone-easily-swappable-parameters,
+
+    -clang-analyzer-optin.core.EnumCastOutOfRange,
+
+    -cppcoreguidelines-avoid-c-arrays, -cppcoreguidelines-avoid-do-while, -cppcoreguidelines-avoid-goto, -cppcoreguidelines-avoid-magic-numbers, -cppcoreguidelines-macro-to-enum,
+    -cppcoreguidelines-macro-usage, -cppcoreguidelines-non-private-member-variables-in-classes, -cppcoreguidelines-pro-type-member-init,
+    -cppcoreguidelines-pro-type-reinterpret-cast, -cppcoreguidelines-pro-type-union-access,
+
+    -google-build-using-namespace, -google-explicit-constructor, -google-readability-braces-around-statements,
+
+    -hicpp-avoid-c-arrays, -hicpp-avoid-goto, -hicpp-braces-around-statements, -hicpp-named-parameter, -hicpp-non-private-member-variables-in-classes,
+    -hicpp-uppercase-literal-suffix, -hicpp-use-auto,
+
+    -llvm-header-guard, -llvm-qualified-auto,
+
+    -misc-use-anonymous-namespace,
+
+    -modernize-avoid-c-arrays, -modernize-use-auto, -modernize-use-trailing-return-type,
+
+    -performance-unnecessary-value-param,
+
+    -portability-avoid-pragma-once,
+
+    -readability-braces-around-statements, -readability-identifier-length, -readability-implicit-bool-conversion, -readability-isolate-declaration, -readability-named-parameter,
+    -readability-uppercase-literal-suffix, readability-identifier-naming
+
+CheckOptions:
+    - key: readability-identifier-naming.ClassCase
+      value: CamelCase
+    - key: readability-identifier-naming.StructCase
+      value: CamelCase
+    - key: readability-identifier-naming.EnumCase
+      value: CamelCase
+    - key: readability-identifier-naming.FunctionCase
+      value: camelBack
+    - key: readability-identifier-naming.MemberCase
+      value: camelBack
+    - key: readability-identifier-naming.MemberIgnoredRegexp # For internal members prefixed with `_`.
+      value: "^_?[a-z][a-z0-9_]*$"
+    - key: readability-identifier-naming.GlobalConstantCase
+      value: CamelCase
+    - key: readability-identifier-naming.GlobalVariableCase
+      value: camelBack
+    - key: readability-identifier-naming.TypeAliasCase
+      value: CamelCase
+    - key: readability-identifier-naming.TypedefCase
+      value: CamelCase
+    - key: readability-identifier-naming.ConceptCase
+      value: CamelCase
+    - key: readability-identifier-naming.TypeParameterCase
+      value: CamelCase
+    - key: readability-identifier-naming.ValueParameterCase
+      value: CamelCase
+    - key: readability-identifier-naming.TemplateTemplateParameterCase
+      value: CamelCase
+    - key: readability-identifier-naming.ParameterCase
+      value: camelBack
+    - key: readability-identifier-naming.ParameterIgnoredRegexp # For special parameters prefixed with `_`, i.e. `_this`.
+      value: "^_?[a-z][a-z0-9_]*$"
+    - key: readability-identifier-naming.LocalVariableCase
+      value: camelBack
+    - key: readability-identifier-naming.LocalVariableIgnoredRegexp # For special local variables prefixed with `_`, i.e. `_` (discarded).
+      value: "^_?[a-z][a-z0-9_]*$"
+    - key: readability-identifier-naming.EnumConstantCase
+      value: CamelCase
+    - key: readability-identifier-naming.MacroDefinitionCase
+      value: lower_case
+    - key: readability-identifier-naming.MacroDefinitionPrefix
+      value: "_"
+
+WarningsAsErrors: "*,-readability-function-cognitive-complexity"

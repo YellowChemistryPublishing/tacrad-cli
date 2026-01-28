@@ -1,0 +1,6 @@
+[submodule "libcxxext"]
+	path = libcxxext
+	url = https://github.com/YellowChemistryPublishing/libcxxext.git
+[submodule "FTXUI"]
+	path = FTXUI
+	url = https://github.com/ArthurSonzogni/FTXUI.git
