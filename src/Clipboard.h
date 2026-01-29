@@ -17,48 +17,50 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 
-inline void setClipboard(std::string_view str)
-{
-    if (!OpenClipboard(nullptr))
-        return;
-    sys::destructor _ = [&] noexcept { CloseClipboard(); };
-
-    if (!EmptyClipboard())
-        return;
-
-    HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, str.size() + 1);
-    if (!hGlob)
-        return;
-
-    void* pData = GlobalLock(hGlob);
-    if (!pData)
-    {
-        GlobalFree(hGlob);
-        return;
-    }
-
-    std::memcpy(pData, str.data(), str.size());
-    *(_as(char*, pData) + str.size()) = '\0';
-
-    if (GlobalUnlock(hGlob) != 0)
-        return;
-
-    SetClipboardData(CF_TEXT, hGlob);
-}
-
 #endif
 
 /// @brief Clipboard utility functions.
 /// @note Static class.
-struct Clipboard
+class Clipboard
 {
-private:
+#if _libcxxext_os_windows
+    /// @brief Set clipboard text on Windows.
+    static void setClipboardWin32(std::string_view str)
+    {
+        if (!OpenClipboard(nullptr))
+            return;
+        sys::destructor _ = [&] noexcept { CloseClipboard(); };
+
+        if (!EmptyClipboard())
+            return;
+
+        HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, str.size() + 1);
+        if (!hGlob)
+            return;
+
+        void* pData = GlobalLock(hGlob);
+        if (!pData)
+        {
+            GlobalFree(hGlob);
+            return;
+        }
+
+        std::memcpy(pData, str.data(), str.size());
+        *(_as(char*, pData) + str.size()) = '\0';
+
+        if (GlobalUnlock(hGlob) != 0)
+            return;
+
+        SetClipboardData(CF_TEXT, hGlob);
+    }
+#endif
+
     /// @brief Base64 encode a string for OSC 52 clipboard.
     static std::string base64Encode(std::string_view input)
     {
         static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        std::string output;
-        output.reserve(((input.size() + 2) / 3) * 4); // NOLINT(readability-magic-numbers)
+        std::string ret;
+        ret.reserve(((input.size() + 2) / 3) * 4); // NOLINT(readability-magic-numbers)
 
         for (sz i = 0_uz; i < input.size(); i += 3_uz) // NOLINT(readability-magic-numbers)
         {
@@ -69,14 +71,14 @@ private:
                 n |= u32(_as(byte, input[i + 2]));
 
             // NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-pro-bounds-constant-array-index)
-            output.append(1, table[(n >> 18_u32) & 0x3F_u32])
+            ret.append(1, table[(n >> 18_u32) & 0x3F_u32])
                 .append(1, table[(n >> 12_u32) & 0x3F_u32])
                 .append(1, (i + 1 < input.size()) ? table[(n >> 6_u32) & 0x3F_u32] : '=')
                 .append(1, (i + 2 < input.size()) ? table[n & 0x3F_u32] : '=');
             // NOLINTEND(readability-magic-numbers,cppcoreguidelines-pro-bounds-constant-array-index)
         }
 
-        return output;
+        return ret;
     }
 public:
     Clipboard() = delete;
@@ -93,7 +95,7 @@ public:
 #if !_libcxxext_os_windows
                     std::cout << "\033]52;c;" << Clipboard::base64Encode(selection) << "\a" << std::flush;
 #else
-                    setClipboard(selection);
+                    Clipboard::setClipboardWin32(selection);
 #endif
                 }
                 return true;

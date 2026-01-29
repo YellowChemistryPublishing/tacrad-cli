@@ -9,6 +9,7 @@
 #include <Config.h>
 #include <Debug.h>
 #include <Screen.h>
+#include <Style.h>
 #include <components/Terminal.h>
 
 int main()
@@ -25,7 +26,7 @@ int main()
         {
             return ui::vbox({
                        ui::filler(),
-                       ui::hbox({ ui::text(" "), terminal->Render() | ui::flex, ui::text(" ") }),
+                       hpad(terminal->Render()),
                    }) |
                 ui::borderStyled(UserSettings::border);
         }) | TerminalQuickActionHandler(terminal) |

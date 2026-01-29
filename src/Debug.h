@@ -9,8 +9,9 @@
 #include <stdexcept>
 #include <thread>
 
-struct Debug
+class Debug
 {
+public:
     Debug() = delete;
 
     template <typename... Args>

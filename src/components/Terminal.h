@@ -1,13 +1,12 @@
 #pragma once
 
+#include "Debug.h"
 #include <Preamble.h>
 
 #include <atomic>
 #include <cctype>
-#include <cstddef>
 #include <cstdint>
 #include <format>
-#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -16,14 +15,56 @@
 #include <module/sys.Threading>
 
 #include <Config.h>
+#include <Music.h>
 #include <Screen.h>
 
 /// @brief Terminal input component with blinking cursor.
 /// @note Pass `byref`.
 class TerminalImpl : public ui::ComponentBase
 {
+    static std::vector<std::string> argvParse(std::string_view cmd)
+    {
+        std::vector<std::string> argv;
+        bool ignoreSpaces = false;
+        for (auto it = cmd.begin(); it != cmd.end();)
+        {
+            while (it != cmd.end() && std::isspace(*it))
+                ++it;
+            if (it == cmd.end())
+                break;
+
+            std::string arg;
+            while (it != cmd.end() && (ignoreSpaces || !std::isspace(*it)))
+            {
+                if (*it == '\\')
+                {
+                    const auto next = std::next(it);
+                    if (next == cmd.end() || (*next != ' ' && *next != '\\' && *next != '"'))
+                        arg.push_back('\\');
+                    else
+                    {
+                        arg.push_back(*next);
+                        ++it;
+                    }
+                }
+                else if (*it == '"')
+                    ignoreSpaces = !ignoreSpaces;
+                else
+                    arg.push_back(*it);
+
+                ++it;
+            }
+            argv.emplace_back(std::move(arg));
+
+            if (it != cmd.end())
+                ++it;
+        }
+
+        return argv;
+    }
+
     ui::ScreenInteractive& screen = Screen();
-    ui::Component input_comp;
+    ui::Component inputComp;
 
     std::string cmd;
     std::atomic<int_least32_t> pendingClear = 0;
@@ -31,21 +72,12 @@ class TerminalImpl : public ui::ComponentBase
     /// @brief Process a command entered into the terminal.
     void processCommand()
     {
-        std::vector<std::string_view> argv;
-        for (auto it = this->cmd.begin(); it != this->cmd.end();)
+        std::vector<std::string> argv = TerminalImpl::argvParse(this->cmd);
+
+        if (!argv.empty())
         {
-            while (it != this->cmd.end() && std::isspace(*it))
-                ++it;
-            if (it == this->cmd.end())
-                break;
-
-            auto beg = it;
-            while (it != this->cmd.end() && !std::isspace(*it))
-                ++it;
-            argv.emplace_back(std::to_address(beg), std::to_address(it));
-
-            if (it != this->cmd.end())
-                ++it;
+            if (argv.front() == "next" || argv.front() == "n")
+                MusicPlayer::next();
         }
     }
 
@@ -72,7 +104,7 @@ class TerminalImpl : public ui::ComponentBase
     }
 
     /// @brief Process a quick action entered into the terminal.
-    /* NOLINT(readability-convert-member-functions-to-static) */ void processQuickAction(std::string_view action, ui::ScreenInteractive& screen)
+    /* NOLINT(readability-convert-member-functions-to-static) */ bool processQuickAction(std::string_view action, ui::ScreenInteractive& screen)
     {
         const sz trimBeg = action.find_first_not_of(' ', !action.empty() && action[0] == Config::QuickActionKey ? 1 : 0);
         const sz trimEnd = action.find_last_not_of(' ') + 1uz;
@@ -82,13 +114,36 @@ class TerminalImpl : public ui::ComponentBase
             c = _as(char, std::tolower(c));
 
         if (actionId == "q")
+        {
             screen.Exit();
+            return true;
+        }
+        if (actionId == "n")
+        {
+            MusicPlayer::next();
+            return true;
+        }
+        if (actionId == "p")
+        {
+            if (MusicPlayer::playing())
+                MusicPlayer::pause();
+            else
+                MusicPlayer::resume();
+            return true;
+        }
+        if (actionId == "a")
+        {
+            MusicPlayer::autoplay(!MusicPlayer::autoplay());
+            return true;
+        }
+
+        return false;
     }
 public:
     explicit TerminalImpl() :
-        input_comp(ui::Input(ui::InputOption { .content = &this->cmd,
-                                               .placeholder = std::format("{} for quick action...", Config::QuickActionKey),
-                                               .transform = [this](ui::InputState state) -> ui::Element
+        inputComp(ui::Input(ui::InputOption { .content = &this->cmd,
+                                              .placeholder = std::format("{} for quick action...", Config::QuickActionKey),
+                                              .transform = [this](ui::InputState state) -> ui::Element
     {
         if (state.focused && !state.is_placeholder)
             state.element |= ui::focusCursorBlockBlinking;
@@ -102,8 +157,8 @@ public:
 
         return state.element;
     },
-                                               .multiline = false,
-                                               .on_change = [this]() -> void
+                                              .multiline = false,
+                                              .on_change = [this]() -> void
     {
         if (!this->cmd.starts_with(Config::QuickActionKey))
             return;
@@ -115,15 +170,18 @@ public:
             return;
         }
 
-        this->processQuickAction(this->cmd, this->screen);
+        if (this->processQuickAction(this->cmd, this->screen))
+            this->cmd.clear();
     },
-                                               .on_enter = [this]() -> void
+                                              .on_enter = [this]() -> void
     {
+        _retif(, this->cmd.empty());
+
         this->processCommand();
         this->cmd.clear();
     } }))
     {
-        this->Add(this->input_comp);
+        this->Add(this->inputComp);
     }
     TerminalImpl(const TerminalImpl&) = delete;
     TerminalImpl(TerminalImpl&&) = delete;

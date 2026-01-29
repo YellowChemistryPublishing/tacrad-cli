@@ -4,3 +4,6 @@
 [submodule "FTXUI"]
 	path = FTXUI
 	url = https://github.com/ArthurSonzogni/FTXUI.git
+[submodule "miniaudio"]
+	path = miniaudio
+	url = https://github.com/mackron/miniaudio.git
