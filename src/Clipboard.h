@@ -9,7 +9,9 @@
 
 #include <Screen.h>
 
-#if _libcxxext_os_windows
+#if !_libcxxext_os_windows
+#include <iostream>
+#else
 
 #undef NOMINMAX
 #define NOMINMAX 1

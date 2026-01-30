@@ -1,14 +1,39 @@
 #pragma once
 
-#include <Preamble.h>
+#include <cstddef>
+#include <cstdlib>
+#include <format>
+#include <iterator>
+#include <span>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include <module/sys>
 
 #include <Debug.h>
 #include <Music.h>
 
+struct InvocationEntry
+{
+    std::string command;
+    std::string output;
+};
+
 class CommandInvocation
 {
+    static inline std::vector<InvocationEntry> history;
 public:
     CommandInvocation() = delete;
+
+    static void pushCommand(std::string cmd) { CommandInvocation::history.push_back(InvocationEntry { .command = std::move(cmd), .output = "" }); }
+    template <typename... Args>
+    static void println(std::format_string<Args...> fmt, Args&&... args)
+    {
+        _retif(, CommandInvocation::history.empty());
+        CommandInvocation::history.back().output.append(std::format(fmt, std::forward<Args>(args)...)).push_back('\n');
+    }
+    static std::vector<InvocationEntry>& rawHistory() { return CommandInvocation::history; }
 
     static void playOrTogglePlaying(const std::vector<std::string>& cmd)
     {
@@ -33,14 +58,14 @@ public:
     {
         if (cmd.size() < 2) [[unlikely]]
         {
-            Debug::log("[log.error] Track title argument must be given to \"play\"!");
+            CommandInvocation::println("[log.error] Track title argument must be given to \"play\"!");
             return;
         }
 
         MusicPlayer::stopMusic();
 
         std::string lookupName = cmd[1];
-        for (auto& word : std::span(std::next(cmd.begin(), 2), cmd.end()))
+        for (const auto& word : std::span(std::next(cmd.begin(), 2), cmd.end()))
         {
             lookupName.push_back(' ');
             lookupName.append(word);
@@ -52,98 +77,85 @@ public:
     {
         if (cmd.size() > 1) [[unlikely]]
         {
-            Debug::log("[log.error] \"resume\" takes no arguments!");
+            CommandInvocation::println("[log.error] \"resume\" takes no arguments!");
             return;
         }
 
         if (!MusicPlayer::loaded())
             MusicPlayer::resume();
         else
-            Debug::log("[log.error] Not currently playing music! Use \"play\" and \"stop\" to change media.");
+            CommandInvocation::println(R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)");
     }
     static void pause(const std::vector<std::string>& cmd)
     {
         if (cmd.size() > 1) [[unlikely]]
         {
-            Debug::log("[log.error] \"pause\" takes no arguments!");
+            CommandInvocation::println("[log.error] \"pause\" takes no arguments!");
             return;
         }
 
         if (MusicPlayer::loaded())
             MusicPlayer::pause();
         else
-            Debug::log("[log.error] Not currently playing music! Use \"play\" and \"stop\" to change media.");
+            CommandInvocation::println(R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)");
     }
     static void seek(const std::vector<std::string>& cmd)
     {
         if (cmd.size() < 2) [[unlikely]]
         {
-            Debug::log("[log.error] Seek position argument (in seconds) must be given to \"seek\"!");
+            CommandInvocation::println("[log.error] Seek position argument (in seconds) must be given to \"seek\"!");
             return;
         }
         if (cmd.size() > 2) [[unlikely]]
         {
-            Debug::log("[log.error] Extra arguments given to \"seek\"!");
+            CommandInvocation::println("[log.error] Extra arguments given to \"seek\"!");
             return;
         }
 
         if (!MusicPlayer::loaded())
         {
-            Debug::log("[log.error] Not currently playing music! Use \"play\" and \"stop\" to change media.");
+            CommandInvocation::println(R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)");
             return;
         }
 
-        std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> conv;
         char* readEnd = nullptr;
-        std::string convBytes = conv.to_bytes(cmd[1]);
-        float q = std::strtof(convBytes.c_str(), &readEnd);
-
-        if ((readEnd - convBytes.data()) != convBytes.size())
+        const float q = std::strtof(cmd[1].c_str(), &readEnd);
+        if ((readEnd - cmd[1].data()) != _as(ptrdiff_t, cmd[1].size()))
         {
-            Debug::log("[log.error] Invalid index argument given to \"seek\"!");
+            CommandInvocation::println(R"([log.error] Invalid index argument given to "seek"!)");
             return;
         }
 
-        float seekQuery = (float)ma_engine_get_sample_rate(&MusicPlayer::engine) * q;
-        if (seekQuery >= 0.0f && seekQuery <= MusicPlayer::frameLen)
-            ma_sound_seek_to_pcm_frame(&MusicPlayer::music, (ma_uint64)seekQuery);
-        else
-            Debug::log("[log.error] Seek query out of duration of media!");
+        MusicPlayer::seek(q);
     }
     static void volume(const std::vector<std::string>& cmd)
     {
         if (cmd.size() < 2) [[unlikely]]
         {
-            Debug::log("[log.error] Volume argument (linear) must be given to \"vol\"!");
+            CommandInvocation::println(R"([log.error] Volume argument (linear) must be given to "vol"!)");
             return;
         }
         if (cmd.size() > 2) [[unlikely]]
         {
-            Debug::log("[log.error] Extra arguments given to \"vol\"!");
+            CommandInvocation::println(R"([log.error] Extra arguments given to "vol"!)");
             return;
         }
 
-        std::string vStr = cmd[1];
-        std::wstring wvStr;
-        wvStr.reserve(vStr.size());
-        for (auto c : vStr)
-            wvStr.push_back(c);
-        std::wistringstream ss(std::move(wvStr));
-        float v;
-        ss >> v;
-        ma_engine_set_volume(&MusicPlayer::engine, v);
+        float v = 1.0f;
+        std::istringstream(cmd[1]) >> v;
+        MusicPlayer::volume(v);
     }
-    static void stop(const std::vector<std::string>& cmd)
+    static void stop(const std::vector<std::string>&)
     {
         if (MusicPlayer::loaded())
             MusicPlayer::stopMusic();
         else
-            Debug::log("[log.error] Not currently playing music! Use \"play\" to start media.");
+            CommandInvocation::println(R"([log.error] Not currently playing music! Use "play" to start media.)");
     }
     static void next(const std::vector<std::string>& cmd)
     {
         if (cmd.size() > 2)
-            Debug::log("[log.error] Extra arguments given to \"playl\"!");
+            CommandInvocation::println(R"([log.error] Extra arguments given to "playl"!)");
 
         MusicPlayer::next();
     }

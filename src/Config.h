@@ -15,6 +15,7 @@ struct Config
 
     static constexpr char QuickActionKey = ':';
     static constexpr std::chrono::milliseconds QuickActionDelay = std::chrono::milliseconds(1000);
+    static constexpr std::chrono::milliseconds StatusBarMessageDelay = std::chrono::milliseconds(3200);
 };
 
 /// @brief User settings that can be modified at runtime.
