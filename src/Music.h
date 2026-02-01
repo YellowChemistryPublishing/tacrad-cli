@@ -1,9 +1,9 @@
 #pragma once
 
-#include "CompilerWarnings.h"
 #include <Preamble.h>
 
 #include <cctype>
+#include <cmath>
 #include <codecvt>
 #include <filesystem>
 #include <locale>
@@ -32,7 +32,7 @@ class MusicPlayer
     }
 
     static inline std::random_device seeder;
-    static inline std::mt19937 randEngine { seeder() };
+    static inline std::mt19937 randEngine { _as(std::mt19937, seeder()) };
     static inline std::uniform_real_distribution<float> dist { 0.0f, 1.0f };
 
     static ma_engine& audioEngine()
@@ -51,8 +51,8 @@ class MusicPlayer
         return cctor;
     };
 
-    static inline bool isPlaying = false;
-    static inline bool shouldAutoplay = false;
+    static inline std::atomic<bool> isPlaying = true;
+    static inline std::atomic<bool> shouldAutoplay = false;
 
     struct Audio
     {
@@ -67,10 +67,32 @@ class MusicPlayer
 public:
     MusicPlayer() = delete;
 
+    static float currentTime()
+    {
+        _retif(0.0f, !MusicPlayer::audio);
+        float ret = 0.0f;
+        ma_sound_get_cursor_in_seconds(&MusicPlayer::audio->sound, &ret);
+        return ret;
+    }
+    static float totalTime()
+    {
+        _retif(0.0f, !MusicPlayer::audio);
+        return MusicPlayer::audio->audioLen;
+    }
+    static std::string formatTime(float seconds) { return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); }
+
+    /// @brief Checks if there is music loaded.
     static bool loaded() { return MusicPlayer::audio.has_value(); }
-    static bool playing() { return MusicPlayer::isPlaying; }
-    static bool autoplay() { return MusicPlayer::shouldAutoplay; }
-    static void autoplay(bool value) { MusicPlayer::shouldAutoplay = value; }
+
+    /// @brief Checks if music is currently playing.
+    /// @note Thread-safe.
+    static bool playing() { return MusicPlayer::isPlaying.load(); }
+    /// @brief Checks if music should autoplay.
+    /// @note Thread-safe.
+    static bool autoplay() { return MusicPlayer::shouldAutoplay.load(); }
+    /// @brief Sets whether music should autoplay.
+    /// @note Thread-safe.
+    static void autoplay(bool value) { MusicPlayer::shouldAutoplay.store(value); }
 
     struct FoundMusic
     {
@@ -81,34 +103,34 @@ public:
     {
         namespace fs = std::filesystem;
 
-        std::error_code ec; // TODO(halloimdragon): Use this everywhere.
+        std::error_code ec; // NOLINT(misc-const-correctness) TODO(halloimdragon): Use this everywhere.
         const std::string compare = MusicPlayer::toLower(name);
 
-        if (fs::exists("music/"))
+        if (!fs::exists("music/", ec))
+            return nullptr;
+
+        for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
         {
-            for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+            if (dir.is_regular_file(ec))
             {
-                if (dir.is_regular_file(ec))
-                {
-                    if (MusicPlayer::toLower(dir.path().stem().string()) == compare)
-                        return FoundMusic { .name = dir.path().stem().string(), .file = dir.path() };
-                }
+                if (MusicPlayer::toLower(dir.path().stem().string()) == compare)
+                    return FoundMusic { .name = dir.path().stem().string(), .file = dir.path() };
             }
-            for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+        }
+        for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+        {
+            if (dir.is_regular_file(ec))
             {
-                if (dir.is_regular_file(ec))
-                {
-                    if (MusicPlayer::toLower(dir.path().stem().string()).starts_with(compare))
-                        return FoundMusic { .name = dir.path().stem().string(), .file = dir.path() };
-                }
+                if (MusicPlayer::toLower(dir.path().stem().string()).starts_with(compare))
+                    return FoundMusic { .name = dir.path().stem().string(), .file = dir.path() };
             }
-            for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+        }
+        for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+        {
+            if (dir.is_regular_file(ec))
             {
-                if (dir.is_regular_file(ec))
-                {
-                    if (MusicPlayer::toLower(dir.path().stem().string()).contains(compare))
-                        return FoundMusic { .name = dir.path().stem().string(), .file = dir.path() };
-                }
+                if (MusicPlayer::toLower(dir.path().stem().string()).contains(compare))
+                    return FoundMusic { .name = dir.path().stem().string(), .file = dir.path() };
             }
         }
 
@@ -168,6 +190,8 @@ public:
             {
                 if (MusicPlayer::autoplay())
                     MusicPlayer::tryPlayNextShuffle();
+                else
+                    MusicPlayer::isPlaying.store(false);
             });
         }, nullptr);
 
@@ -201,6 +225,7 @@ public:
     {
         namespace fs = std::filesystem;
 
+        MusicPlayer::stopMusic();
         if (!MusicPlayer::audio)
             MusicPlayer::audio = Audio();
 

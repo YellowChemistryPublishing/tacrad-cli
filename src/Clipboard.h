@@ -2,6 +2,7 @@
 
 #include <Preamble.h>
 
+#include <cstring>
 #include <string>
 #include <string_view>
 
@@ -14,9 +15,10 @@
 #else
 
 #undef NOMINMAX
-#define NOMINMAX 1
+#define NOMINMAX 1 // NOLINT(readability-identifier-naming)
 #undef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1
+#define WIN32_LEAN_AND_MEAN 1 // NOLINT(readability-identifier-naming)
+#include <Minwindef.h>
 #include <Windows.h>
 
 #endif
@@ -31,7 +33,7 @@ class Clipboard
     {
         if (!OpenClipboard(nullptr))
             return;
-        sys::destructor _ = [&] noexcept { CloseClipboard(); };
+        const sys::destructor _ = [&] noexcept { CloseClipboard(); };
 
         if (!EmptyClipboard())
             return;
@@ -47,8 +49,8 @@ class Clipboard
             return;
         }
 
-        std::memcpy(pData, str.data(), str.size());
-        *(_as(char*, pData) + str.size()) = '\0';
+        std::memcpy(pData, str.data(), str.size()); // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        *(_as(char*, pData) + str.size()) = '\0';   // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         if (GlobalUnlock(hGlob) != 0)
             return;

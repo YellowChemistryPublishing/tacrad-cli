@@ -68,8 +68,9 @@ IndentPPDirectives: None
 NamespaceIndentation: All
 ContinuationIndentWidth: 4
 AlignEscapedNewlines: LeftWithLastLine
-AlignAfterOpenBracket: Align
 AlignOperands: DontAlign
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Left
 IndentAccessModifiers: false
 AccessModifierOffset: -4
 BreakBeforeConceptDeclarations: Always

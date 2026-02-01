@@ -6,8 +6,10 @@ CompileFlags:
         - "-I../libcxxext/sys"
         - "-I../libcxxext/sys.Threading"
         - "-I../libcxxext/sys.Threading/platform"
+        - "-I../miniaudio"
         - -xc++
         - -std=c++26
+        - --target=x86_64-w64-windows-gnu
     Remove:
         - -fconcepts-diagnostics-depth=4
     CompilationDatabase: build
