@@ -1,19 +1,22 @@
 #pragma once
 
 #include <cctype>
+#include <format>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+
 #include <module/sys>
 
 #include <Config.h>
-#include <Exec.h>
+#include <Exec.inl>
 #include <Music.h>
-#include <Screen.h>
+#include <Utility.h>
 #include <components/StatusBar.h>
 
 struct CommandProcessor
@@ -71,7 +74,7 @@ struct CommandProcessor
 
         CommandInvocation::pushCommand(std::string(cmd));
         if (!CommandInvocation::matchExecuteCommand(argv))
-            CommandInvocation::println("[log.error] Unrecognized command `{}` with args {}.", cmd.front(), std::span(cmd).subspan(1));
+            CommandInvocation::println("[log.error] Unrecognized command `{}` with args {}.", argv.front(), std::span(argv).subspan(1));
 
         if (const std::shared_ptr<StatusBarImpl> statusBar = statusBarPtr.lock())
             statusBar->showLastCommandOutput();
@@ -84,17 +87,16 @@ struct CommandProcessor
     {
         const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);
         const sz trimEnd = cmd.find_last_not_of(' ') + 1uz;
-        std::string actionId(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */,
-                             trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */);
-        for (char& c : actionId)
-            c = _as(char, std::tolower(c));
+        const std::u32string actionId = u32stringToLower(u32stringFrom(
+            std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */,
+                             trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */)));
 
-        if (actionId == "a")
+        if (actionId == U"a")
         {
             MusicPlayer::autoplay(!MusicPlayer::autoplay());
             return true;
         }
 
-        return CommandInvocation::matchExecuteCommand({ std::format(":{}", actionId) });
+        return CommandInvocation::matchExecuteCommand({ std::format(":{}", stringFrom(actionId)) });
     }
 };

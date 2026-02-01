@@ -2,16 +2,20 @@
 
 #include <cstdlib>
 #include <exception>
-#include <ftxui/component/component.hpp>
-#include <ftxui/dom/elements.hpp>
 #include <memory>
+#include <string>
+#include <vector>
+
+#include <module/sys>
 
 #include <Clipboard.h>
 #include <Config.h>
 #include <Debug.h>
+#include <Exec.h> // NOLINT(misc-include-cleaner)
 #include <Screen.h>
 #include <Style.h>
 #include <components/Console.h>
+#include <components/Playlist.h>
 #include <components/StatusBar.h>
 #include <components/Terminal.h>
 
@@ -31,6 +35,8 @@ int main()
         };
         i32 tabSelected = 0;
         ui::MenuOption toggleOptions = ui::MenuOption::HorizontalAnimated();
+        toggleOptions.underline.color_active = Config::FlavorEmphasizedColor;
+        toggleOptions.underline.color_inactive = Config::FlavorUnemphasizedColor;
         toggleOptions.underline.leader_duration = Config::FlavorAnimationDuration;
         toggleOptions.underline.leader_function = ui::animation::easing::Linear;
         toggleOptions.underline.follower_duration = Config::FlavorAnimationDuration;
@@ -39,30 +45,23 @@ int main()
 
         // UI
 
-        i32 leftSize = 10_i32;
-        i32 rightSize = 10_i32;
-        ui::Component middle = ui::Renderer([] { return ui::text("Middle") | ui::center; });
-        ui::Component left = ui::Renderer([] { return ui::text("Left"); });
-        ui::Component right = ui::Renderer([] { return ui::text("Right"); });
-        ui::Component container = ui::ResizableSplit({ .main = left,
-                                                       .back = middle,
-                                                       .direction = ui::Direction::Left,
-                                                       .main_size = &*leftSize,
-                                                       .separator_func = [] { return ui::separatorStyled(UserSettings::border); } });
-        container = ui::ResizableSplit({ .main = right,
-                                         .back = container,
-                                         .direction = ui::Direction::Right,
-                                         .main_size = &*rightSize,
-                                         .separator_func = [] { return ui::separatorStyled(UserSettings::border); } });
+        i32 leftSize = 20_i32;  // NOLINT(readability-magic-numbers)
+        i32 rightSize = 32_i32; // NOLINT(readability-magic-numbers)
+        const ui::Component playlist = Playlist();
+        const ui::Component left = ui::Renderer([] { return ui::text("> all") | ui::bold; });
+        const ui::Component right = ui::Renderer([] { return ui::text("details here"); });
+        ui::Component container =
+            ui::ResizableSplit({ .main = left, .back = playlist, .direction = ui::Direction::Left, .main_size = &*leftSize, .separator_func = [] { return psep(); } });
+        container = ui::ResizableSplit({ .main = right, .back = container, .direction = ui::Direction::Right, .main_size = &*rightSize, .separator_func = [] { return psep(); } });
 
-        std::shared_ptr<StatusBarImpl> statusBar = std::static_pointer_cast<StatusBarImpl>(StatusBar());
+        const std::shared_ptr<StatusBarImpl> statusBar = std::static_pointer_cast<StatusBarImpl>(StatusBar());
 
         // Console
-        ui::Component console = Console();
+        const ui::Component console = Console();
 
         // Combine into full page.
 
-        ui::Component tabContainer = ui::Container::Tab({ ui::Container::Vertical({ ui::Renderer(container, [&]() -> ui::Element { return container->Render() | ui::yflex_grow; }),
+        ui::Component tabContainer = ui::Container::Tab({ ui::Container::Vertical({ ui::Renderer(container, [&]() -> ui::Element { return container->Render() | ui::yflex; }),
                                                                                     ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), statusBar }),
                                                           console },
                                                         &*tabSelected);
@@ -77,8 +76,8 @@ int main()
             ui::Renderer(terminal, [&]() -> ui::Element { return hpad(terminal->Render()); }),
         });
 
-        ui::Component uiRoot = ui::Renderer(rootContainer, [&]() -> ui::Element { return rootContainer->Render() | ui::borderStyled(UserSettings::border); }) |
-            TerminalQuickActionHandler(terminal) | Clipboard::clipboardHandler();
+        const ui::Component uiRoot = ui::Renderer(rootContainer, [&]() -> ui::Element { return rootContainer->Render() | ui::borderStyled(UserSettings::border); }) |
+            TerminalQuickActionHandler(terminal) | ClipboardHandler();
 
         screen.Loop(uiRoot);
 
@@ -86,11 +85,11 @@ int main()
     }
     catch (const std::exception& ex)
     {
-        Debug::log("Uncaught exception: {}", ex.what());
+        debugLog("Uncaught exception: {}", ex.what());
     }
     catch (...)
     {
-        Debug::log("Uncaught exception.");
+        debugLog("Uncaught exception.");
     }
     return EXIT_FAILURE;
 }

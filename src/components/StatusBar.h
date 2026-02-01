@@ -2,9 +2,10 @@
 
 #include <Preamble.h>
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
-#include <ftxui/dom/elements.hpp>
+#include <format>
 #include <memory>
 #include <mutex>
 #include <stop_token>
@@ -16,9 +17,10 @@
 #include <module/sys>
 
 #include <Config.h>
-#include <Exec.h>
+#include <Exec.inl>
+#include <Music.h>
 #include <Screen.h>
-#include <Style.h>
+#include <Utility.h>
 
 /// @brief Status bar component that displays temporary messages and track progress.
 /// @note
@@ -75,8 +77,52 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     ui::Box sliderBounds;
     ui::CapturedMouse capturedMouse;
 
-    bool OnEvent(ui::Event event) final
+    ui::Element postProcessButton(ui::Element elem, ui::EntryState state)
     {
+        if (this->controls->Focused() && state.active)
+            elem |= ui::bold;
+        if (state.focused)
+            elem = elem | ui::color(Config::FlavorEmphasizedColor) | ui::underlined;
+        else
+            elem |= ui::color(Config::FlavorUnemphasizedColor);
+        return elem;
+    }
+
+    ui::Component playPauseButton = ui::Button("Play",
+                                               []
+    {
+        if (MusicPlayer::playing() && MusicPlayer::loaded())
+            (void)MusicPlayer::pause();
+        else
+            (void)MusicPlayer::resume();
+    },
+                                               ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element
+    { return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text("#") : ui::text("►"), state); },
+                                                                  .animated_colors {} });
+    ui::Component stopButton = ui::Button("Stop", [] {
+        (void)MusicPlayer::stopMusic();
+    }, ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text("■"), state); }, .animated_colors {} });
+    ui::Component nextButton = ui::Button("Next", [] {
+        (void)MusicPlayer::next();
+    }, ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text("»"), state); }, .animated_colors {} });
+    ui::Component controls = ui::Renderer(ui::Container::Horizontal({ this->playPauseButton, this->stopButton, this->nextButton }), [this]
+    {
+        return ui::hbox({
+            this->playPauseButton->Render(),
+            ui::separatorEmpty(),
+            this->stopButton->Render(),
+            ui::separatorEmpty(),
+            this->nextButton->Render(),
+        });
+    });
+
+    [[nodiscard]] bool Focusable() const final { return true; }
+
+    [[nodiscard]] bool OnEvent(ui::Event event) final
+    {
+        if (this->ComponentBase::OnEvent(event))
+            return true;
+
         if (!event.is_mouse() || !MusicPlayer::loaded())
             return false;
 
@@ -103,15 +149,18 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
             this->trackProgress = std::clamp(this->trackProgress, 0.0f, 1.0f);
 
             if (this->trackProgress != lastProgress && MusicPlayer::loaded())
-                MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime());
+            {
+                if (!MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime()))
+                    CommandInvocation::println("[log.error] Failed to seek track.");
+            }
 
             return this->trackProgress != lastProgress;
         }
 
-        return false;
+        return true;
     }
 
-    ui::Element OnRender() final
+    [[nodiscard]] ui::Element OnRender() final
     {
         {
             const std::unique_lock guard(this->messageLock);
@@ -133,16 +182,17 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
         const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
         const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
 
-        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
+        return ui::hbox({ this->controls->Render(), ui::separatorEmpty(),
+                          ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
                           ui::separatorEmpty(),
                           ui::hbox({
                               ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
-                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorUnemphasizedColor) | ui::flex,
+                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorUnemphasizedColor) | ui::xflex,
                           }) | ui::reflect(this->sliderBounds) |
-                              ui::flex | ui::selectionStyleReset });
+                              ui::xflex | ui::selectionStyleReset });
     }
 public:
-    StatusBarImpl() = default;
+    StatusBarImpl() { this->Add(this->controls); }
 
     /// @brief Show a temporary message on the status bar.
     /// @param msg The message to display (will auto-clear after `Config::StatusBarMessageDelay` seconds).
@@ -166,22 +216,13 @@ public:
     /// @return Whether any output existed to show.
     bool showLastCommandOutput()
     {
-        const std::vector<InvocationEntry>& history = CommandInvocation::rawHistory();
+        const std::vector<CommandInvocation::Entry>& history = CommandInvocation::rawHistory();
         _retif(false, history.empty());
 
         const std::string& output = history.back().output;
         _retif(false, output.empty());
 
-        sz end = output.find_last_not_of('\n');
-        _retif(false, end == std::string::npos);
-        sz beg = output.rfind('\n', end);
-        beg = (beg == std::string::npos) ? 0_uz : beg + 1_uz;
-        while (beg < output.size() && std::isspace(output[beg]))
-            ++beg;
-        while (end > beg && std::isspace(output[end - 1_uz]))
-            --end;
-
-        this->showMessage(output.substr(beg, end - beg + 1_uz));
+        this->showMessage(wstringLastLineTrimmed(output));
         return true;
     }
 };

@@ -10,7 +10,7 @@ struct Config
 {
     Config() = delete;
 
-    static constexpr std::string_view ApplicationName = "tacrad-cli";
+    static constexpr std::string_view ApplicationName = "♪♫ tacrad-cli";
     static constexpr std::string_view VersionIdentifier = "v0.1.0-alpha";
 
     static constexpr char QuickActionKey = ':';
