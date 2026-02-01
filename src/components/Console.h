@@ -39,7 +39,9 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
         if (state.index == this->selected) // Circumvent native behaviour of unselecting when console not focused.
             ret = ret | ui::bold | ui::focus;
         if (state.active)
-            ret = ret | ui::underlined;
+            ret |= ui::underlined;
+        if (!state.active && state.index != this->selected)
+            ret |= ui::dim;
         return ret;
     }
     [[nodiscard]] ui::Component createRow(std::string str)
@@ -56,7 +58,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
     [[nodiscard]] ui::Element OnRender() final
     {
         const std::vector<CommandInvocation::Entry>& history = CommandInvocation::rawHistory();
-        i32 maxLineWidth = std::max(i32(this->bounds.x_max) - i32(this->bounds.x_min), 1_i32);
+        i32 maxLineWidth = std::max(i32(this->bounds.x_max) - i32(this->bounds.x_min), i32::highest());
         if (this->lastCmdIndex > history.size() || this->lastLineWidth != maxLineWidth)
         {
             this->containerComp->DetachAllChildren();

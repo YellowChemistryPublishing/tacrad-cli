@@ -26,7 +26,7 @@
     try                                                                                                                \
     {                                                                                                                  \
         stream_type out("out.log", stream_type::out | stream_type::app);                                               \
-        out << std::format(std::move(fmt), std::forward<Args>(args)...) << std::flush;                                 \
+        out << std::format(std::move(fmt), std::forward<Args>(args)...) << std::endl /* Deliberate. */;                \
         return;                                                                                                        \
     }                                                                                                                  \
     catch (const std::format_error&) /* NOLINT(bugprone-empty-catch) */                                                \

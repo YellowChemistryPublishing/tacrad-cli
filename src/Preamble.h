@@ -3,7 +3,11 @@
 /// @file Preamble.h
 /// @brief Include-before-all-else header.
 
-#include <ftxui/component/animation.hpp>          // IWYU pragma: export
+#include <CompilerWarnings.h>
+
+_push_nowarn_deprecated();
+#include <ftxui/component/animation.hpp> // IWYU pragma: export
+_pop_nowarn_deprecated();
 #include <ftxui/component/captured_mouse.hpp>     // IWYU pragma: export
 #include <ftxui/component/component.hpp>          // IWYU pragma: export
 #include <ftxui/component/component_base.hpp>     // IWYU pragma: export

@@ -12,30 +12,32 @@
 
 #include <module/sys>
 
+#include <Debug.h>
+
 /// @brief Convert a `std::string` to `std::u32string`.
 [[nodiscard]] inline std::u32string u32stringFrom(std::string_view str)
 {
-    return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(std::to_address(str.begin()), std::to_address(str.end()));
-}
-/// @brief Convert a `std::u32string` to `std::string`.
-[[nodiscard]] inline std::string stringFrom(std::u32string_view str)
-{
-    return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().to_bytes(std::to_address(str.begin()), std::to_address(str.end()));
+    try
+    {
+        _push_nowarn_deprecated();
+        return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(std::to_address(str.begin()), std::to_address(str.end()));
+        _pop_nowarn_deprecated();
+    }
+    catch (const std::range_error&)
+    {
+        debugLog("Range error: {}.", str);
+        return U"";
+    }
 }
 /// @brief Convert a `std::u8string` to `std::string`.
 [[nodiscard]] inline std::string stringFrom(std::u8string_view str) { return { str.begin(), str.end() }; }
-/// @brief Convert a `std::string` to `std::wstring`.
-[[nodiscard]] inline std::wstring wstringFrom(std::string_view str)
-{
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(std::to_address(str.begin()), std::to_address(str.end()));
-}
 
 inline std::u32string u32stringToLower(std::u32string_view str)
 {
     std::u32string ret;
     ret.reserve(str.size());
     for (const char32_t c : str)
-        ret.push_back(_as(char32_t, std::tolower(_as(u32::underlying_type, c))));
+        ret.push_back(_as(char32_t, std::tolower(_as(int, c))));
     return ret;
 }
 

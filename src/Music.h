@@ -1,7 +1,9 @@
 #pragma once
 
+#include <CompilerWarnings.h>
 #include <Preamble.h>
 
+_push_nowarn_c_cast();
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -20,6 +22,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+_pop_nowarn_c_cast();
 
 #include <module/sys>
 
@@ -223,6 +226,7 @@ public:
         }
 
         std::shuffle(MusicPlayer::playlist.begin(), MusicPlayer::playlist.end(), MusicPlayer::randEngine);
+        std::shuffle(MusicPlayer::playlist.begin(), MusicPlayer::playlist.end(), MusicPlayer::randEngine); // Again for good measure.:
         return true;
     }
 
@@ -285,15 +289,18 @@ public:
         return true;
     }
 
-    [[nodiscard]] static bool startMusic(std::string foundMusicName, const std::string& foundMusicFile)
+    [[nodiscard]] static bool startMusic(std::string foundMusicName, const std::wstring& foundMusicFile)
     {
+        namespace fs = std::filesystem;
+
         if (!MusicPlayer::audio)
             MusicPlayer::audio = Audio();
-
         Audio& aud = *MusicPlayer::audio;
-        if (const ma_result res = ma_sound_init_from_file_w(&MusicPlayer::audioEngine(), wstringFrom(foundMusicFile).c_str(), 0, nullptr, nullptr, &aud.sound); res != MA_SUCCESS)
+
+        if (const ma_result res = ma_sound_init_from_file_w(&MusicPlayer::audioEngine(), foundMusicFile.c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &aud.sound);
+            res != MA_SUCCESS)
         {
-            CommandInvocation::println("[log.error] Failed to load track `{}`, with error code {}.", foundMusicFile, _as(int, res));
+            CommandInvocation::println("[log.error] Failed to load track `{}`, with error code {}.", stringFrom(fs::path(foundMusicFile).generic_u8string()), _as(int, res));
             return false;
         }
 
@@ -344,8 +351,8 @@ public:
 
         const FoundMusic found = foundRes.move();
         const sz foundIndex(std::distance(MusicPlayer::playlist.begin(), std::ranges::find(MusicPlayer::playlist, found)));
-        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? foundIndex : 0_uz;
-        return MusicPlayer::startMusic(found.name, stringFrom(found.file.generic_u8string()));
+        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? foundIndex : sz::highest();
+        return MusicPlayer::startMusic(found.name, found.file.generic_wstring());
     }
     [[nodiscard]] static bool stopMusic()
     {
@@ -375,7 +382,7 @@ public:
 
         Screen().PostEvent(ui::Event::Custom);
 
-        return MusicPlayer::startMusic(MusicPlayer::playlist[MusicPlayer::currentTrack].name, stringFrom(MusicPlayer::playlist[MusicPlayer::currentTrack].file.generic_u8string()));
+        return MusicPlayer::startMusic(MusicPlayer::playlist[MusicPlayer::currentTrack].name, MusicPlayer::playlist[MusicPlayer::currentTrack].file.generic_wstring());
     }
     [[nodiscard]] static bool next()
     {

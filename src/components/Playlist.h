@@ -12,16 +12,15 @@
 
 class PlaylistImpl : public ui::ComponentBase
 {
-    bool refocusCurrentlyPlaying = false;
     ui::Element postProcessEntry(const ui::EntryState& state)
     {
         ui::Element ret = ui::hbox({ ui::text(
                                          [&]
         {
             if (state.index == MusicPlayer::currentTrack)
-                return "* ";
-            if (state.active)
                 return "> ";
+            if (state.active)
+                return "* ";
             return "  ";
         }()),
                                      ui::paragraphAlignLeft(state.label) });
@@ -29,21 +28,15 @@ class PlaylistImpl : public ui::ComponentBase
             ret |= ui::inverted;
         if (state.focused)
             ret = ret | ui::underlined;
-        if (state.index == MusicPlayer::currentTrack && this->refocusCurrentlyPlaying)
-        {
-            ret |= ui::focus;
-            this->refocusCurrentlyPlaying = false;
-        }
         if (state.active)
             ret |= ui::bold;
-        if (!state.focused && !state.active)
+        if (!state.focused && !state.active && state.index != MusicPlayer::currentTrack)
             ret |= ui::dim;
         return ret;
     }
     void onEntryEnter()
     {
         MusicPlayer::currentTrack = sz(this->highlighted);
-        this->refocusCurrentlyPlaying = true;
         (void)MusicPlayer::play();
     }
 
@@ -63,7 +56,6 @@ class PlaylistImpl : public ui::ComponentBase
             .on_enter = [this]() -> void { this->onEntryEnter(); }
     });
 
-    [[nodiscard]] bool Focusable() const final { return true; }
     [[nodiscard]] ui::Element OnRender() final
     {
         const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::currentPlaylist();
@@ -79,6 +71,7 @@ class PlaylistImpl : public ui::ComponentBase
 
         return menu->Render() | ui::vscroll_indicator | ui::yframe | ui::yflex;
     }
+    [[nodiscard]] bool Focusable() const final { return true; }
 public:
     PlaylistImpl()
     {

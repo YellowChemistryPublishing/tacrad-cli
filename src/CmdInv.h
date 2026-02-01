@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-
 #include <module/sys>
 
 #include <Config.h>
@@ -97,6 +96,6 @@ struct CommandProcessor
             return true;
         }
 
-        return CommandInvocation::matchExecuteCommand({ std::format(":{}", stringFrom(actionId)) });
+        return CommandInvocation::matchExecuteCommand({ std::format(":{}", stringFrom(std::filesystem::path(actionId).generic_u8string())) });
     }
 };
