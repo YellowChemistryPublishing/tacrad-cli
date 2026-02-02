@@ -19,7 +19,6 @@
     PrintAgain:                                                                                                        \
     if (retryCount > 20) /* NOLINT(readability-magic-numbers) */                                                       \
     {                                                                                                                  \
-        assert(!0xBADC0DE);   /* NOLINT(readability-magic-numbers) */                                                  \
         std::exit(0xBADC0DE); /* NOLINT(concurrency-mt-unsafe, readability-magic-numbers): We're giving up anyways. */ \
     }                                                                                                                  \
                                                                                                                        \

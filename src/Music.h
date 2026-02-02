@@ -148,57 +148,31 @@ public:
             return nullptr;
         }
 
-        for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+        const auto tryFindWithCompare = [&](auto&& pred) -> sys::result<FoundMusic>
         {
-            if (dir.is_regular_file(ec))
+            for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
             {
-                if (u32stringToLower(dir.path().stem().generic_u32string()) == compare)
-                    return FoundMusic { .name = stringFrom(dir.path().stem().generic_u8string()), .file = dir.path() };
+                if (dir.is_regular_file(ec))
+                {
+                    if (pred(dir.path().stem().generic_u32string()))
+                        return FoundMusic { .name = stringFrom(dir.path().stem().generic_u8string()), .file = dir.path() };
+                }
+                if (ec)
+                {
+                    CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
+                    return nullptr;
+                }
             }
-            if (ec)
-            {
-                CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
-                return nullptr;
-            }
-        }
-        if (ec)
-        {
-            CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
-            return nullptr;
-        }
 
-        for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
-        {
-            if (dir.is_regular_file(ec))
-            {
-                if (u32stringToLower(dir.path().stem().generic_u32string()).starts_with(compare))
-                    return FoundMusic { .name = stringFrom(dir.path().stem().generic_u8string()), .file = dir.path() };
-            }
-            if (ec)
-            {
-                CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
-                return nullptr;
-            }
-        }
-
-        for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
-        {
-            if (dir.is_regular_file(ec))
-            {
-                if (u32stringToLower(dir.path().stem().generic_u32string()).contains(compare))
-                    return FoundMusic { .name = stringFrom(dir.path().stem().generic_u8string()), .file = dir.path() };
-            }
-            if (ec)
-            {
-                CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
-                return nullptr;
-            }
-        }
-        if (ec)
-        {
-            CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
             return nullptr;
-        }
+        };
+
+        sys::result<FoundMusic> res = tryFindWithCompare([&](std::u32string_view trackName) { return u32stringToLower(trackName) == compare; });
+        _retif(res.move(), res);
+        res = tryFindWithCompare([&](std::u32string_view trackName) { return u32stringToLower(trackName).starts_with(compare); });
+        _retif(res.move(), res);
+        res = tryFindWithCompare([&](std::u32string_view trackName) { return u32stringToLower(trackName).contains(compare); });
+        _retif(res.move(), res);
 
         return nullptr;
     }

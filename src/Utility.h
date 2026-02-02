@@ -6,6 +6,7 @@
 #include <locale>
 #include <memory>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>

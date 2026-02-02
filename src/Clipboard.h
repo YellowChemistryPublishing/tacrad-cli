@@ -2,18 +2,22 @@
 
 #include <Preamble.h>
 
-#include <cstring>
 #include <string>
-#include <string_view>
 
 #include <module/sys>
 
 #include <Screen.h>
-#include <winerror.h>
 
 #if !_libcxxext_os_windows
+
 #include <iostream>
+
+#include <Utility.h>
+
 #else
+
+#include <cstring>
+#include <string_view>
 
 #undef NOMINMAX
 #define NOMINMAX 1 // NOLINT(readability-identifier-naming)
@@ -23,6 +27,7 @@
 
 #include <Errhandlingapi.h>
 #include <Minwindef.h>
+#include <Winerror.h>
 
 #endif
 

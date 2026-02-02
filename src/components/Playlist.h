@@ -12,7 +12,7 @@
 
 class PlaylistImpl : public ui::ComponentBase
 {
-    ui::Element postProcessEntry(const ui::EntryState& state)
+    static ui::Element postProcessEntry(const ui::EntryState& state)
     {
         ui::Element ret = ui::hbox({ ui::text(
                                          [&]
@@ -42,18 +42,19 @@ class PlaylistImpl : public ui::ComponentBase
 
     std::vector<std::string> trackNames;
     i32 highlighted = 0_i32;
-    ui::Component menu = ui::Menu(
-        &this->trackNames, &*this->highlighted,
-        ui::MenuOption {
-            .entries {},
-            .underline = ui::UnderlineOption {},
-            .entries_option =
-                ui::MenuEntryOption { .label = "", .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); }, .animated_colors {} },
-            .elements_prefix {},
-            .elements_infix {},
-            .elements_postfix {},
-            .on_change {},
-            .on_enter = [this]() -> void { this->onEntryEnter(); }
+    ui::Component menu =
+        ui::Menu(&this->trackNames, &*this->highlighted,
+                 ui::MenuOption {
+                     .entries {},
+                     .underline = ui::UnderlineOption {},
+                     .entries_option = ui::MenuEntryOption { .label = "",
+                               .transform = [](const ui::EntryState& state) -> ui::Element { return PlaylistImpl::postProcessEntry(state); },
+                               .animated_colors {} },
+                     .elements_prefix {},
+                     .elements_infix {},
+                     .elements_postfix {},
+                     .on_change {},
+                     .on_enter = [this]() -> void { this->onEntryEnter(); }
     });
 
     [[nodiscard]] ui::Element OnRender() final
