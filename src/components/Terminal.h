@@ -129,6 +129,20 @@ public:
 /// @brief Create a terminal component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::weak_ptr<StatusBarImpl> statusBar) { return ui::Make<TerminalImpl>(statusBar); }
 
+inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalSpaceToFocusHandler(const ui::Component& terminal)
+{
+    return ui::CatchEvent([&](ui::Event event)
+    {
+        if (!terminal->Focused() && event == ui::Event::Character(' '))
+        {
+            terminal->TakeFocus(); // Focus terminal, on spacebar pressed.
+            return true;
+        }
+
+        return false;
+    });
+}
+
 inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalQuickActionHandler(const ui::Component& terminal)
 {
     return ui::CatchEvent([&](ui::Event event)

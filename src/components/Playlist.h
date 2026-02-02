@@ -41,6 +41,7 @@ class PlaylistImpl : public ui::ComponentBase
     }
 
     std::vector<std::string> trackNames;
+    sz currentTrackOld = MusicPlayer::currentTrack;
     i32 highlighted = 0_i32;
     ui::Component menu =
         ui::Menu(&this->trackNames, &*this->highlighted,
@@ -59,6 +60,12 @@ class PlaylistImpl : public ui::ComponentBase
 
     [[nodiscard]] ui::Element OnRender() final
     {
+        if (this->currentTrackOld != MusicPlayer::currentTrack)
+        {
+            this->highlighted = i32(MusicPlayer::currentTrack);
+            this->currentTrackOld = MusicPlayer::currentTrack;
+        }
+
         const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::currentPlaylist();
         while (this->trackNames.size() > playlist.size())
             this->trackNames.pop_back();
@@ -77,7 +84,7 @@ public:
     PlaylistImpl()
     {
         if (MusicPlayer::currentPlaylist().empty())
-            MusicPlayer::shufflePlaylist();
+            MusicPlayer::generateShuffledPlaylist();
 
         this->Add(this->menu);
     }

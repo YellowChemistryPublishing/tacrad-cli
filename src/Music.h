@@ -1,8 +1,8 @@
 #pragma once
 
-#include <CompilerWarnings.h>
 #include <Preamble.h>
 
+#include <CompilerWarnings.h>
 _push_nowarn_c_cast();
 #include <algorithm>
 #include <atomic>
@@ -84,14 +84,15 @@ class MusicPlayer
 
     struct Audio
     {
-        ma_sound sound {};
+        ma_sound sound {}; // _MUST_ be valid.
         std::string name;
 
         sys::integer<ma_uint64> prevFrame { 0 };
         sys::integer<ma_uint64> frameLen { 0 };
-        float audioLen = 0.0f;
+        float audioLen = -1.0f;
     };
     static inline std::optional<Audio> audio;
+    static inline std::atomic<bool> hasAudio = false;
 public:
     struct FoundMusic
     {
@@ -121,7 +122,7 @@ public:
     static std::string formatTime(float seconds) { return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); } // NOLINT(readability-magic-numbers)
 
     /// @brief Checks if there is music loaded.
-    [[nodiscard]] static bool loaded() { return MusicPlayer::audio.has_value(); }
+    [[nodiscard]] static bool loaded() { return MusicPlayer::hasAudio.load(); }
 
     /// @brief Checks if music is currently playing.
     /// @note Thread-safe.
@@ -178,9 +179,9 @@ public:
     }
 
     static inline sz currentTrack = 0_uz;
-    static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
+    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
 
-    static bool shufflePlaylist()
+    static bool generateShuffledPlaylist()
     {
         namespace fs = std::filesystem;
         std::error_code ec;
@@ -263,20 +264,35 @@ public:
         return true;
     }
 
-    [[nodiscard]] static bool startMusic(std::string foundMusicName, const std::wstring& foundMusicFile)
+    [[nodiscard]] static bool startMusic(std::string foundMusicName, const std::filesystem::path& foundMusicFile)
     {
         namespace fs = std::filesystem;
 
         if (!MusicPlayer::audio)
+        {
             MusicPlayer::audio = Audio();
-        Audio& aud = *MusicPlayer::audio;
+            MusicPlayer::hasAudio = true;
+        }
 
+        Audio& aud = *MusicPlayer::audio;
+        sys::optional_destructor aud_dtor = [] noexcept
+        {
+            MusicPlayer::audio = std::nullopt;
+            MusicPlayer::hasAudio = false;
+        };
+
+#if _libcxxext_os_windows
         if (const ma_result res = ma_sound_init_from_file_w(&MusicPlayer::audioEngine(), foundMusicFile.c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &aud.sound);
+#else
+        if (const ma_result res =
+                ma_sound_init_from_file(&MusicPlayer::audioEngine(), foundMusicFile.string().c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &aud.sound);
+#endif
             res != MA_SUCCESS)
         {
             CommandInvocation::println("[log.error] Failed to load track `{}`, with error code {}.", stringFrom(fs::path(foundMusicFile).generic_u8string()), _as(int, res));
             return false;
         }
+        sys::optional_destructor sound_dtor = [] noexcept { ma_sound_uninit(&MusicPlayer::audio->sound); };
 
         if (ma_result res = ma_sound_get_length_in_pcm_frames(&aud.sound, &*aud.frameLen); res != MA_SUCCESS)
         {
@@ -293,16 +309,17 @@ public:
         if (ma_result res = ma_sound_set_end_callback(&aud.sound,
                                                       [](void*, ma_sound*)
         {
-            Screen().Post([]
-            {
-                if (MusicPlayer::autoplay() && !MusicPlayer::next())
+            if (MusicPlayer::autoplay())
+                Screen().Post([]
                 {
-                    CommandInvocation::println("[log.error] Failed to play next track.");
-                    MusicPlayer::isPlaying.store(false);
-                }
+                    if (!MusicPlayer::next()) [[unlikely]]
+                    {
+                        CommandInvocation::println("[log.error] Failed to play next track.");
+                        MusicPlayer::isPlaying.store(false);
+                    }
 
-                MusicPlayer::isPlaying.store(MusicPlayer::autoplay());
-            });
+                    MusicPlayer::isPlaying.store(MusicPlayer::autoplay());
+                });
         }, nullptr);
             res != MA_SUCCESS)
         {
@@ -310,12 +327,14 @@ public:
             return false;
         }
 
-        if (MusicPlayer::isPlaying && !MusicPlayer::resume())
+        if (MusicPlayer::isPlaying.load() && !MusicPlayer::resume())
         {
             CommandInvocation::println("[log.error] Failed to resume track.");
             return false;
         }
 
+        sound_dtor.release();
+        aud_dtor.release();
         return true;
     }
     [[nodiscard]] static bool queryStartMusic(std::string_view query)
@@ -326,20 +345,19 @@ public:
         const FoundMusic found = foundRes.move();
         const sz foundIndex(std::distance(MusicPlayer::playlist.begin(), std::ranges::find(MusicPlayer::playlist, found)));
         MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? foundIndex : sz::highest();
-        return MusicPlayer::startMusic(found.name, found.file.generic_wstring());
+        return MusicPlayer::startMusic(found.name, found.file);
     }
     [[nodiscard]] static bool stopMusic()
     {
         _retif(true, !MusicPlayer::audio);
 
         Audio& aud = *MusicPlayer::audio;
-        if (ma_result res = ma_sound_stop(&aud.sound); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to stop track, with error code {}.", _as(int, res));
-            return false;
-        }
+        if (ma_result res = ma_sound_stop(&aud.sound); res != MA_SUCCESS) [[unlikely]]
+            CommandInvocation::println("[log.warn] Couldn't stop track, with error code {}.", _as(int, res));
+
         ma_sound_uninit(&aud.sound);
         MusicPlayer::audio = std::nullopt;
+        MusicPlayer::hasAudio = false;
 
         return true;
     }
@@ -351,12 +369,12 @@ public:
         if (MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
         {
             MusicPlayer::currentTrack = 0_uz;
-            _retif(false, !MusicPlayer::shufflePlaylist());
+            _retif(false, !MusicPlayer::generateShuffledPlaylist());
         }
 
         Screen().PostEvent(ui::Event::Custom);
 
-        return MusicPlayer::startMusic(MusicPlayer::playlist[MusicPlayer::currentTrack].name, MusicPlayer::playlist[MusicPlayer::currentTrack].file.generic_wstring());
+        return MusicPlayer::startMusic(MusicPlayer::playlist[MusicPlayer::currentTrack].name, MusicPlayer::playlist[MusicPlayer::currentTrack].file);
     }
     [[nodiscard]] static bool next()
     {

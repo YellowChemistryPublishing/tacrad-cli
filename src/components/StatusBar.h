@@ -63,11 +63,8 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     {
         while (!token.stop_requested())
         {
-            Screen().Post([]
-            {
-                if (MusicPlayer::loaded() && MusicPlayer::playing())
-                    Screen().PostEvent(ui::Event::Custom);
-            });
+            if (MusicPlayer::playing() && MusicPlayer::loaded())
+                Screen().PostEvent(ui::Event::Custom);
 
             std::this_thread::sleep_for(Config::StatusBarDurationRefreshRate);
         }
@@ -91,13 +88,18 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     ui::Component playPauseButton = ui::Button("Play",
                                                []
     {
-        if (MusicPlayer::playing() && MusicPlayer::loaded())
-            (void)MusicPlayer::pause();
+        if (MusicPlayer::loaded())
+        {
+            if (MusicPlayer::playing())
+                (void)MusicPlayer::pause();
+            else
+                (void)MusicPlayer::resume();
+        }
         else
-            (void)MusicPlayer::resume();
+            (void)MusicPlayer::play();
     },
                                                ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element
-    { return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text("#") : ui::text("►"), state); },
+    { return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text("#") : ui::text(">"), state); },
                                                                   .animated_colors {} });
     ui::Component stopButton = ui::Button("Stop", [] {
         (void)MusicPlayer::stopMusic();
@@ -114,6 +116,19 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
             ui::separatorEmpty(),
             this->nextButton->Render(),
         });
+    });
+
+    ui::Component progressSlider = ui::Renderer([this]
+    {
+        const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
+        const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
+
+        return ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))), ui::separatorEmpty(),
+               ui::hbox({
+                   ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
+                   ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorUnemphasizedColor) | ui::xflex,
+               }) | ui::reflect(this->sliderBounds) |
+                   ui::xflex | ui::selectionStyleReset;
     });
 
     [[nodiscard]] bool Focusable() const final { return true; }
@@ -179,20 +194,14 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
                 this->trackProgress = 0.0f;
         }
 
-        const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
-        const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
-
-        return ui::hbox({ this->controls->Render(), ui::separatorEmpty(),
-                          ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
-                          ui::separatorEmpty(),
-                          ui::hbox({
-                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
-                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorUnemphasizedColor) | ui::xflex,
-                          }) | ui::reflect(this->sliderBounds) |
-                              ui::xflex | ui::selectionStyleReset });
+        return ui::hbox({ this->controls->Render(), ui::separatorEmpty(), this->progressSlider->Render() });
     }
 public:
-    StatusBarImpl() { this->Add(this->controls); }
+    StatusBarImpl()
+    {
+        this->Add(this->controls);
+        this->Add(this->progressSlider);
+    }
 
     /// @brief Show a temporary message on the status bar.
     /// @param msg The message to display (will auto-clear after `Config::StatusBarMessageDelay` seconds).

@@ -77,7 +77,7 @@ int main()
         });
 
         const ui::Component uiRoot = ui::Renderer(rootContainer, [&]() -> ui::Element { return rootContainer->Render() | ui::borderStyled(UserSettings::border); }) |
-            TerminalQuickActionHandler(terminal) | ClipboardHandler();
+            TerminalSpaceToFocusHandler(terminal) | TerminalQuickActionHandler(terminal) | ClipboardHandler();
 
         screen.Loop(uiRoot);
 

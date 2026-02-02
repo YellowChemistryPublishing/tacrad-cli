@@ -3,7 +3,7 @@
 	url = https://github.com/YellowChemistryPublishing/libcxxext.git
 [submodule "FTXUI"]
 	path = FTXUI
-	url = https://github.com/ArthurSonzogni/FTXUI.git
+	url = https://github.com/YellowChemistryPublishing/FTXUI.git
 [submodule "miniaudio"]
 	path = miniaudio
 	url = https://github.com/mackron/miniaudio.git
