@@ -77,7 +77,7 @@ class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_th
 
         if (state.is_placeholder)
             state.element = ui::hbox({ state.element | ui::flex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |
-                ui::color(Config::FlavorUnemphasizedColor) | ui::flex | (state.hovered || state.focused ? ui::underlined : ui::nothing);
+                ui::color(UserSettings::FlavorUnemphasizedColor) | ui::flex | (state.hovered || state.focused ? ui::underlined : ui::nothing);
         else
             state.element = ui::hbox({ state.element, ui::filler() });
 

@@ -79,9 +79,9 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
         if (this->controls->Focused() && state.active)
             elem |= ui::bold;
         if (state.focused)
-            elem = elem | ui::color(Config::FlavorEmphasizedColor) | ui::underlined;
+            elem = elem | ui::color(UserSettings::FlavorEmphasizedColor) | ui::underlined;
         else
-            elem |= ui::color(Config::FlavorUnemphasizedColor);
+            elem |= ui::color(UserSettings::FlavorUnemphasizedColor);
         return elem;
     }
 
@@ -125,8 +125,8 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
 
         return ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))), ui::separatorEmpty(),
                ui::hbox({
-                   ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
-                   ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(Config::FlavorUnemphasizedColor) | ui::xflex,
+                   ui::separatorCharacter(Config::ProgressBarFill) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
+                   ui::separatorCharacter(Config::ProgressBarFill) | ui::color(UserSettings::FlavorUnemphasizedColor) | ui::xflex,
                }) | ui::reflect(this->sliderBounds) |
                    ui::xflex | ui::selectionStyleReset;
     });

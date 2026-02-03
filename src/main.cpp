@@ -35,8 +35,8 @@ int main()
         };
         i32 tabSelected = 0;
         ui::MenuOption toggleOptions = ui::MenuOption::HorizontalAnimated();
-        toggleOptions.underline.color_active = Config::FlavorEmphasizedColor;
-        toggleOptions.underline.color_inactive = Config::FlavorUnemphasizedColor;
+        toggleOptions.underline.color_active = UserSettings::FlavorEmphasizedColor;
+        toggleOptions.underline.color_inactive = UserSettings::FlavorUnemphasizedColor;
         toggleOptions.underline.leader_duration = Config::FlavorAnimationDuration;
         toggleOptions.underline.leader_function = ui::animation::easing::Linear;
         toggleOptions.underline.follower_duration = Config::FlavorAnimationDuration;
