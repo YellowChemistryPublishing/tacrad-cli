@@ -64,9 +64,12 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
         while (!token.stop_requested())
         {
             if (MusicPlayer::playing() && MusicPlayer::loaded())
+            {
                 Screen().PostEvent(ui::Event::Custom);
-
-            std::this_thread::sleep_for(Config::StatusBarDurationRefreshRate);
+                std::this_thread::sleep_for(Config::StatusBarDurationRefreshRate);
+            }
+            else
+                std::this_thread::sleep_for(Config::StatusBarDurationRefreshRateInactive);
         }
     } };
 
@@ -76,7 +79,7 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
 
     ui::Element postProcessButton(ui::Element elem, ui::EntryState state)
     {
-        if (this->controls->Focused() && state.active)
+        if (state.active)
             elem |= ui::bold;
         if (state.focused)
             elem = elem | ui::color(UserSettings::FlavorEmphasizedColor) | ui::underlined;
@@ -90,54 +93,46 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     {
         if (MusicPlayer::loaded())
         {
-            if (MusicPlayer::playing())
-                (void)MusicPlayer::pause();
-            else
-                (void)MusicPlayer::resume();
+            if (MusicPlayer::playing() && !MusicPlayer::pause())
+                CommandInvocation::println("[log.error] Failed to pause track.");
+            else if (!MusicPlayer::resume())
+                CommandInvocation::println("[log.error] Failed to resume track.");
         }
-        else
-            (void)MusicPlayer::play();
+        else if (!MusicPlayer::play())
+            CommandInvocation::println("[log.error] Failed to play track.");
     },
                                                ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element
-    { return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text("#") : ui::text(">"), state); },
-                                                                  .animated_colors {} });
-    ui::Component stopButton = ui::Button("Stop", [] {
-        (void)MusicPlayer::stopMusic();
-    }, ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text("■"), state); }, .animated_colors {} });
-    ui::Component nextButton = ui::Button("Next", [] {
-        (void)MusicPlayer::next();
-    }, ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text("»"), state); }, .animated_colors {} });
-    ui::Component controls = ui::Renderer(ui::Container::Horizontal({ this->playPauseButton, this->stopButton, this->nextButton }), [this]
     {
-        return ui::hbox({
-            this->playPauseButton->Render(),
-            ui::separatorEmpty(),
-            this->stopButton->Render(),
-            ui::separatorEmpty(),
-            this->nextButton->Render(),
-        });
-    });
+        return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state);
+    },
+                                                                  .animated_colors {} });
+    ui::Component stopButton =
+        ui::Button("Stop", [] { CommandInvocation::stop({ "[invoked by button press]" }); },
+                   ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text(UserSettings::StopButtonLabel), state); },
+                                      .animated_colors {} });
+    ui::Component nextButton =
+        ui::Button("Next", [] { CommandInvocation::next({ "[invoked by button press]" }); },
+                   ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text(UserSettings::NextButtonLabel), state); },
+                                      .animated_colors {} });
 
     ui::Component progressSlider = ui::Renderer([this]
     {
         const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
         const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
 
-        return ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))), ui::separatorEmpty(),
-               ui::hbox({
-                   ui::separatorCharacter(Config::ProgressBarFill) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
-                   ui::separatorCharacter(Config::ProgressBarFill) | ui::color(UserSettings::FlavorUnemphasizedColor) | ui::xflex,
-               }) | ui::reflect(this->sliderBounds) |
-                   ui::xflex | ui::selectionStyleReset;
+        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
+                          ui::separatorEmpty(),
+                          ui::hbox({
+                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
+                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorUnemphasizedColor) | ui::xflex,
+                          }) | ui::reflect(this->sliderBounds) |
+                              ui::xflex | ui::selectionStyleReset });
     });
 
     [[nodiscard]] bool Focusable() const final { return true; }
 
     [[nodiscard]] bool OnEvent(ui::Event event) final
     {
-        if (this->ComponentBase::OnEvent(event))
-            return true;
-
         if (!event.is_mouse() || !MusicPlayer::loaded())
             return false;
 
@@ -148,14 +143,8 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
             this->TakeFocus();
         }
 
-        if (!this->capturedMouse)
-            return false;
-
-        if (event.mouse().motion == ui::Mouse::Released)
-        {
+        if (this->capturedMouse && event.mouse().motion == ui::Mouse::Released)
             this->capturedMouse.reset();
-            return true;
-        }
 
         if (this->sliderBounds.x_max != this->sliderBounds.x_min)
         {
@@ -168,11 +157,9 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
                 if (!MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime()))
                     CommandInvocation::println("[log.error] Failed to seek track.");
             }
-
-            return this->trackProgress != lastProgress;
         }
 
-        return true;
+        return this->ComponentBase::OnEvent(event);
     }
 
     [[nodiscard]] ui::Element OnRender() final
@@ -194,12 +181,15 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
                 this->trackProgress = 0.0f;
         }
 
-        return ui::hbox({ this->controls->Render(), ui::separatorEmpty(), this->progressSlider->Render() });
+        return ui::hbox({ this->playPauseButton->Render(), ui::separatorEmpty(), this->stopButton->Render(), ui::separatorEmpty(), this->nextButton->Render(), ui::separatorEmpty(),
+                          this->progressSlider->Render() });
     }
 public:
     StatusBarImpl()
     {
-        this->Add(this->controls);
+        this->Add(this->playPauseButton);
+        this->Add(this->stopButton);
+        this->Add(this->nextButton);
         this->Add(this->progressSlider);
     }
 

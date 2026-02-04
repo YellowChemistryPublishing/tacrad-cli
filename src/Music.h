@@ -178,7 +178,7 @@ public:
         return nullptr;
     }
 
-    static inline sz currentTrack = 0_uz;
+    static inline sz currentTrack = sz::sentinel();
     [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
 
     static bool generateShuffledPlaylist()
@@ -196,7 +196,7 @@ public:
 
         if (MusicPlayer::playlist.empty())
         {
-            CommandInvocation::println("[log.error] Couldn't find any tracks to play.");
+            CommandInvocation::println("[log.warn] Couldn't find any tracks to play! (Did you add any under `music/`?)");
             return false;
         }
 
@@ -378,9 +378,12 @@ public:
     }
     [[nodiscard]] static bool next()
     {
-        _retif(false, !MusicPlayer::stopMusic());
+        if (MusicPlayer::loaded())
+        {
+            _retif(false, !MusicPlayer::stopMusic());
+            ++MusicPlayer::currentTrack;
+        }
 
-        ++MusicPlayer::currentTrack;
         return MusicPlayer::play();
     }
 };
