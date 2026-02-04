@@ -6,6 +6,8 @@
 #include <chrono>
 #include <condition_variable>
 #include <format>
+#include <ftxui/component/captured_mouse.hpp>
+#include <ftxui/component/component.hpp>
 #include <memory>
 #include <mutex>
 #include <stop_token>
@@ -73,16 +75,12 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
         }
     } };
 
-    float trackProgress = 0.0f;
-    ui::Box sliderBounds;
-    ui::CapturedMouse capturedMouse;
-
-    ui::Element postProcessButton(ui::Element elem, ui::EntryState state)
+    ui::Element /* NOLINT(readability-convert-member-functions-to-static) */ postProcessButton(ui::Element elem, const ui::EntryState& state)
     {
         if (state.active)
-            elem |= ui::bold;
+            elem = std::move(elem) | ui::bold | ui::focus;
         if (state.focused)
-            elem = elem | ui::color(UserSettings::FlavorEmphasizedColor) | ui::underlined;
+            elem = std::move(elem) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::underlined;
         else
             elem |= ui::color(UserSettings::FlavorUnemphasizedColor);
         return elem;
@@ -91,97 +89,40 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     ui::Component playPauseButton = ui::Button("Play",
                                                []
     {
-        if (MusicPlayer::loaded())
+        if (!MusicPlayer::loaded())
         {
-            if (MusicPlayer::playing())
-            {
-                if (MusicPlayer::pause())
-                    CommandInvocation::println("[log.error] Failed to pause track.");
-            }
-            else if (!MusicPlayer::resume())
-                CommandInvocation::println("[log.error] Failed to resume track.");
+            if (!MusicPlayer::play())
+                CommandInvocation::println("[log.error] Failed to play track.");
+            return;
         }
-        else if (!MusicPlayer::play())
-            CommandInvocation::println("[log.error] Failed to play track.");
+
+        if (!MusicPlayer::playing())
+        {
+            if (!MusicPlayer::resume())
+                CommandInvocation::println("[log.error] Failed to resume track.");
+            return;
+        }
+
+        if (!MusicPlayer::pause())
+            CommandInvocation::println("[log.error] Failed to pause track.");
     },
-                                               ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element
+                                               ui::ButtonOption { .transform = [this](const ui::EntryState& state) -> ui::Element
     {
         return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state);
     },
                                                                   .animated_colors {} });
-    ui::Component stopButton =
-        ui::Button("Stop", [] { CommandInvocation::stop({ "[invoked by button press]" }); },
-                   ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text(UserSettings::StopButtonLabel), state); },
-                                      .animated_colors {} });
-    ui::Component nextButton =
-        ui::Button("Next", [] { CommandInvocation::next({ "[invoked by button press]" }); },
-                   ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text(UserSettings::NextButtonLabel), state); },
-                                      .animated_colors {} });
+    ui::Component stopButton = ui::Button("Stop", [] { CommandInvocation::stop({ "[invoked by button press]" }); },
+                                          ui::ButtonOption { .transform = [this](const ui::EntryState& state) -> ui::Element
+    { return this->postProcessButton(ui::text(UserSettings::StopButtonLabel), state); },
+                                                             .animated_colors {} });
+    ui::Component nextButton = ui::Button("Next", [] { CommandInvocation::next({ "[invoked by button press]" }); },
+                                          ui::ButtonOption { .transform = [this](const ui::EntryState& state) -> ui::Element
+    { return this->postProcessButton(ui::text(UserSettings::NextButtonLabel), state); },
+                                                             .animated_colors {} });
 
-    ui::Component progressSlider = ui::Renderer([this](bool focused)
-    {
-        const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
-        const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
-
-        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))) |
-                              (this->container->Focused() && focused ? ui::bold : ui::nothing),
-                          ui::separatorEmpty(),
-                          ui::hbox({
-                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
-                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorUnemphasizedColor) | ui::xflex,
-                          }) | ui::reflect(this->sliderBounds) |
-                              ui::xflex | ui::selectionStyleReset });
-    });
-
-    ui::Component container = ui::Container::Horizontal({
-        this->playPauseButton,
-        this->stopButton,
-        this->nextButton,
-        this->progressSlider,
-    });
-
-    [[nodiscard]] bool Focusable() const final { return true; }
-
-    [[nodiscard]] bool OnEvent(ui::Event event) final
-    {
-        if (this->ComponentBase::OnEvent(event))
-            return true;
-
-        if (!event.is_mouse() || !MusicPlayer::loaded())
-            return false;
-
-        if (this->capturedMouse && event.mouse().motion == ui::Mouse::Released)
-        {
-            this->capturedMouse.reset();
-            return false;
-        }
-
-        if (event.mouse().button == ui::Mouse::Left && event.mouse().motion == ui::Mouse::Pressed && this->sliderBounds.Contain(event.mouse().x, event.mouse().y) &&
-            !this->capturedMouse)
-        {
-            this->capturedMouse = this->CaptureMouse(event);
-            this->progressSlider->TakeFocus();
-        }
-        if (!this->capturedMouse)
-            return false;
-
-        if (this->sliderBounds.x_max == this->sliderBounds.x_min)
-            return true; // Captured, but no width to seek.
-
-        const float lastProgress = this->trackProgress;
-        this->trackProgress = _as(float, event.mouse().x - this->sliderBounds.x_min) / _as(float, this->sliderBounds.x_max - this->sliderBounds.x_min);
-        this->trackProgress = std::clamp(this->trackProgress, 0.0f, 1.0f);
-
-        if (this->trackProgress != lastProgress && MusicPlayer::loaded())
-        {
-            if (!MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime()))
-                CommandInvocation::println("[log.error] Failed to seek track.");
-        }
-
-        return true;
-    }
-
-    [[nodiscard]] ui::Element OnRender() final
+    float trackProgress = 0.0f;
+    ui::Box sliderBounds;
+    ui::Component progressSliderComp = ui::Renderer([this]
     {
         {
             const std::unique_lock guard(this->messageLock);
@@ -189,22 +130,69 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
                 return ui::text(this->message);
         }
 
-        if (!this->capturedMouse)
+        if (MusicPlayer::loaded())
         {
-            if (MusicPlayer::loaded())
-            {
-                const float total = MusicPlayer::totalTime();
-                this->trackProgress = (total > 0.0f) ? (MusicPlayer::currentTime() / total) : 0.0f;
-            }
-            else
-                this->trackProgress = 0.0f;
+            const float total = MusicPlayer::totalTime();
+            this->trackProgress = (total > 0.0f) ? (MusicPlayer::currentTime() / total) : 0.0f;
+        }
+        else
+            this->trackProgress = 0.0f;
+
+        const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
+        const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
+
+        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
+                          ui::separatorEmpty(),
+                          ui::hbox({
+                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
+                              ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorUnemphasizedColor) | ui::xflex,
+                          }) | ui::selectionStyleReset |
+                              ui::xflex | ui::reflect(this->sliderBounds) }) |
+            ui::xflex;
+    });
+
+    ui::CapturedMouse capturedMouse;
+    ui::Component containerComp =
+        ui::Container::Horizontal({ this->playPauseButton, ui::Renderer([] { return ui::separatorEmpty(); }), this->stopButton, ui::Renderer([] { return ui::separatorEmpty(); }),
+                                    this->nextButton, ui::Renderer([] { return ui::separatorEmpty(); }), this->progressSliderComp }) |
+        ui::CatchEvent([this](ui::Event event)
+    {
+        if (!event.is_mouse() || !MusicPlayer::loaded())
+            return false;
+
+        if (!this->capturedMouse && event.mouse().button == ui::Mouse::Left && event.mouse().motion == ui::Mouse::Pressed &&
+            this->sliderBounds.Contain(event.mouse().x, event.mouse().y))
+        {
+            this->capturedMouse = this->CaptureMouse(event);
+            this->progressSliderComp->TakeFocus();
         }
 
-        return ui::hbox({ this->playPauseButton->Render(), ui::separatorEmpty(), this->stopButton->Render(), ui::separatorEmpty(), this->nextButton->Render(), ui::separatorEmpty(),
-                          this->progressSlider->Render() | ui::xflex });
-    }
+        if (!this->capturedMouse)
+            return false;
+
+        if (event.mouse().motion == ui::Mouse::Released)
+        {
+            this->capturedMouse.reset();
+            return true;
+        }
+
+        if (this->sliderBounds.x_min < this->sliderBounds.x_max)
+        {
+            const float width = _as(float, this->sliderBounds.x_max - this->sliderBounds.x_min);
+            const float progress = std::clamp(_as(float, event.mouse().x - this->sliderBounds.x_min) / width, 0.0f, 1.0f);
+
+            if (this->trackProgress != progress)
+            {
+                this->trackProgress = progress;
+                if (!MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime()))
+                    CommandInvocation::println("[log.error] Failed to seek track.");
+            }
+        }
+
+        return true;
+    });
 public:
-    StatusBarImpl() { this->Add(this->container); }
+    StatusBarImpl() { this->Add(this->containerComp); }
 
     /// @brief Show a temporary message on the status bar.
     /// @param msg The message to display (will auto-clear after `Config::StatusBarMessageDelay` seconds).

@@ -178,7 +178,7 @@ public:
         return nullptr;
     }
 
-    static inline sz currentTrack = sz::sentinel();
+    static inline i32 currentTrack = i32::sentinel();
     [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
 
     static bool generateShuffledPlaylist()
@@ -346,7 +346,7 @@ public:
 
         const FoundMusic found = foundRes.move();
         const sz foundIndex(std::distance(MusicPlayer::playlist.begin(), std::ranges::find(MusicPlayer::playlist, found)));
-        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? foundIndex : sz::sentinel();
+        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? i32(foundIndex) : i32::sentinel();
         return MusicPlayer::startMusic(found.name, found.file);
     }
     [[nodiscard]] static bool stopMusic()
@@ -368,15 +368,15 @@ public:
     {
         _retif(false, !MusicPlayer::stopMusic());
 
-        if (MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
+        if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
         {
-            MusicPlayer::currentTrack = 0_uz;
-            _retif(false, !MusicPlayer::generateShuffledPlaylist());
+            MusicPlayer::currentTrack = 0_i32;
+            _retif(false, MusicPlayer::currentTrack >= MusicPlayer::playlist.size() && !MusicPlayer::generateShuffledPlaylist());
         }
 
         Screen().PostEvent(ui::Event::Custom);
 
-        return MusicPlayer::startMusic(MusicPlayer::playlist[MusicPlayer::currentTrack].name, MusicPlayer::playlist[MusicPlayer::currentTrack].file);
+        return MusicPlayer::startMusic(MusicPlayer::playlist[sz(MusicPlayer::currentTrack)].name, MusicPlayer::playlist[sz(MusicPlayer::currentTrack)].file);
     }
     [[nodiscard]] static bool next()
     {
@@ -385,7 +385,7 @@ public:
             _retif(false, !MusicPlayer::stopMusic());
 
             if (MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
-                MusicPlayer::currentTrack = 0_uz;
+                MusicPlayer::currentTrack = 0_i32;
             else
                 ++MusicPlayer::currentTrack;
         }

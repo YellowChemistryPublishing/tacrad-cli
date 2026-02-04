@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ftxui/component/mouse.hpp"
 #include <Preamble.h>
 
 #include <cctype>
@@ -24,10 +25,6 @@
 /// @note Pass `byptr`.
 class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_this<TerminalImpl>
 {
-    ui::ScreenInteractive& screen = Screen();
-    std::weak_ptr<StatusBarImpl> statusBar;
-    ui::Component inputComp;
-
     std::string cmd;
 
     std::chrono::steady_clock::time_point clearAfter = std::chrono::steady_clock::time_point::max();
@@ -72,14 +69,18 @@ class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_th
     /// @brief Post-process an input element.
     static ui::Element postProcessInput(ui::InputState state)
     {
-        if (state.focused && !state.is_placeholder)
-            state.element |= ui::focusCursorBlockBlinking;
+        if (state.focused)
+        {
+            state.element |= ui::focus;
+            if (!state.is_placeholder)
+                state.element |= ui::focusCursorBlockBlinking;
+        }
 
         if (state.is_placeholder)
-            state.element = ui::hbox({ state.element | ui::flex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |
+            state.element = ui::hbox({ std::move(state.element) | ui::flex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |
                 ui::color(UserSettings::FlavorUnemphasizedColor) | ui::flex | (state.hovered || state.focused ? ui::underlined : ui::nothing);
         else
-            state.element = ui::hbox({ state.element, ui::filler() });
+            state.element = ui::hbox({ std::move(state.element), ui::filler() });
 
         return state.element;
     }
@@ -107,17 +108,31 @@ class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_th
         CommandProcessor::command(this->cmd, this->statusBar);
         this->cmd.clear();
     }
-public:
-    explicit TerminalImpl(std::weak_ptr<StatusBarImpl> statusBar) :
-        statusBar(std::move(statusBar)), inputComp(ui::Input(ui::InputOption { .content = &this->cmd,
-                                                                               .placeholder = std::format("{} for quick action...", Config::QuickActionKey),
-                                                                               .transform = TerminalImpl::postProcessInput,
-                                                                               .multiline = false,
-                                                                               .on_change = [this]() -> void { this->onInputChange(); },
-                                                                               .on_enter = [this]() -> void { this->onInputEnter(); } }))
+
+    ui::ScreenInteractive& screen = Screen();
+    std::weak_ptr<StatusBarImpl> statusBar;
+
+    ui::Box bounds;
+    ui::Component inputComp = ui::Input(ui::InputOption { .content = &this->cmd,
+                                                          .placeholder = std::format("{} for quick action...", Config::QuickActionKey),
+                                                          .transform = TerminalImpl::postProcessInput,
+                                                          .multiline = false,
+                                                          .on_change = [this]() -> void { this->onInputChange(); },
+                                                          .on_enter = [this]() -> void { this->onInputEnter(); } }) |
+        ui::Renderer([this](ui::Element elem) { return std::move(elem) | ui::reflect(this->bounds); }) |
+        ui::CatchEvent([this](ui::Event event)
     {
-        this->Add(this->inputComp);
-    }
+        if (event.is_mouse() && event.mouse().button == ui::Mouse::Left && this->bounds.Contain(event.mouse().x, event.mouse().y))
+        {
+            this->TakeFocus();
+            return true;
+        }
+
+        return false;
+    });
+public:
+    explicit TerminalImpl(std::weak_ptr<StatusBarImpl> statusBar) : statusBar(std::move(statusBar)) { this->Add(this->inputComp); }
+
     TerminalImpl(const TerminalImpl&) = delete;
     TerminalImpl(TerminalImpl&&) = delete;
     ~TerminalImpl() override = default;
@@ -131,7 +146,7 @@ inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::w
 
 inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalSpaceToFocusHandler(const ui::Component& terminal)
 {
-    return ui::CatchEvent([&](ui::Event event)
+    return ui::CatchEvent([&](const ui::Event& event)
     {
         if (!terminal->Focused() && event == ui::Event::Character(' '))
         {
@@ -145,7 +160,7 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Termin
 
 inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalQuickActionHandler(const ui::Component& terminal)
 {
-    return ui::CatchEvent([&](ui::Event event)
+    return ui::CatchEvent([&](const ui::Event& event)
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
             terminal->TakeFocus(); // Focus terminal, when user types quick action key.

@@ -66,7 +66,7 @@ inline void setClipboardWin32(std::string_view str)
 /// @brief Create an event catcher that for handling Ctrl + C like clipboard copy.
 inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ ClipboardHandler()
 {
-    return ui::CatchEvent([](ui::Event event)
+    return ui::CatchEvent([](const ui::Event& event)
     {
         if (event == ui::Event::CtrlC)
         {

@@ -3,10 +3,6 @@
 #include <cstdlib>
 #include <exception>
 #include <memory>
-#include <string>
-#include <vector>
-
-#include <module/sys>
 
 #include <Clipboard.h>
 #include <Config.h>
@@ -15,9 +11,10 @@
 #include <Screen.h>
 #include <Style.h>
 #include <components/Console.h>
-#include <components/Playlist.h>
-#include <components/StatusBar.h>
+#include <components/TabContainer.h>
+#include <components/TabSelect.h>
 #include <components/Terminal.h>
+#include <components/UI.h>
 
 int main()
 {
@@ -27,48 +24,13 @@ int main()
         screen.ForceHandleCtrlC(false);
         screen.ForceHandleCtrlZ(false);
 
-        // Tab Selector
-
-        const std::vector<std::string> tabValues = {
-            "UI",
-            "Console",
-        };
-        i32 tabSelected = 0;
-        ui::MenuOption toggleOptions = ui::MenuOption::HorizontalAnimated();
-        toggleOptions.underline.color_active = UserSettings::FlavorEmphasizedColor;
-        toggleOptions.underline.color_inactive = UserSettings::FlavorUnemphasizedColor;
-        toggleOptions.underline.leader_duration = Config::FlavorAnimationDuration;
-        toggleOptions.underline.leader_function = ui::animation::easing::Linear;
-        toggleOptions.underline.follower_duration = Config::FlavorAnimationDuration;
-        toggleOptions.underline.follower_function = ui::animation::easing::Linear;
-        ui::Component tabSelector = ui::Menu(&tabValues, &*tabSelected, toggleOptions);
-
-        // UI
-
-        i32 leftSize = 20_i32;  // NOLINT(readability-magic-numbers)
-        i32 rightSize = 32_i32; // NOLINT(readability-magic-numbers)
-        const ui::Component playlist = Playlist();
-        const ui::Component left = ui::Renderer([] { return ui::text("> all") | ui::bold; });
-        const ui::Component right = ui::Renderer([] { return ui::text("details here"); });
-        ui::Component container =
-            ui::ResizableSplit({ .main = left, .back = playlist, .direction = ui::Direction::Left, .main_size = &*leftSize, .separator_func = [] { return psep(); } });
-        container = ui::ResizableSplit({ .main = right, .back = container, .direction = ui::Direction::Right, .main_size = &*rightSize, .separator_func = [] { return psep(); } });
-
-        const std::shared_ptr<StatusBarImpl> statusBar = std::static_pointer_cast<StatusBarImpl>(StatusBar());
-
-        // Console
+        const std::shared_ptr<UIImpl> ui = std::static_pointer_cast<UIImpl>(UI());
         const ui::Component console = Console();
 
-        // Combine into full page.
+        std::shared_ptr<TabContainerImpl> tabContainer = std::static_pointer_cast<TabContainerImpl>(TabContainer({ ui, console }));
+        ui::Component tabSelector = TabSelect(tabContainer);
 
-        ui::Component tabContainer = ui::Container::Tab({ ui::Container::Vertical({ ui::Renderer(container, [&]() -> ui::Element { return container->Render() | ui::yflex; }),
-                                                                                    ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), statusBar }),
-                                                          console },
-                                                        &*tabSelected);
-
-        ui::Component terminal = Terminal(statusBar);
-
-        // Root
+        ui::Component terminal = Terminal(ui->statusBar());
 
         ui::Component rootContainer = ui::Container::Vertical({
             ui::Renderer(tabSelector, [&]() -> ui::Element { return hpad(tabSelector->Render()); }),
@@ -91,5 +53,6 @@ int main()
     {
         debugLog("Uncaught exception.");
     }
+
     return EXIT_FAILURE;
 }
