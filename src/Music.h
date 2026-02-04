@@ -320,6 +320,8 @@ public:
 
                     MusicPlayer::isPlaying.store(MusicPlayer::autoplay());
                 });
+            else
+                Screen().Post([] { MusicPlayer::isPlaying.store(false); });
         }, nullptr);
             res != MA_SUCCESS)
         {
@@ -344,7 +346,7 @@ public:
 
         const FoundMusic found = foundRes.move();
         const sz foundIndex(std::distance(MusicPlayer::playlist.begin(), std::ranges::find(MusicPlayer::playlist, found)));
-        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? foundIndex : sz::highest();
+        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? foundIndex : sz::sentinel();
         return MusicPlayer::startMusic(found.name, found.file);
     }
     [[nodiscard]] static bool stopMusic()
@@ -381,7 +383,11 @@ public:
         if (MusicPlayer::loaded())
         {
             _retif(false, !MusicPlayer::stopMusic());
-            ++MusicPlayer::currentTrack;
+
+            if (MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
+                MusicPlayer::currentTrack = 0_uz;
+            else
+                ++MusicPlayer::currentTrack;
         }
 
         return MusicPlayer::play();

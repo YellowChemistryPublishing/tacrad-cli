@@ -93,8 +93,11 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     {
         if (MusicPlayer::loaded())
         {
-            if (MusicPlayer::playing() && !MusicPlayer::pause())
-                CommandInvocation::println("[log.error] Failed to pause track.");
+            if (MusicPlayer::playing())
+            {
+                if (MusicPlayer::pause())
+                    CommandInvocation::println("[log.error] Failed to pause track.");
+            }
             else if (!MusicPlayer::resume())
                 CommandInvocation::println("[log.error] Failed to resume track.");
         }
@@ -115,12 +118,13 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
                    ui::ButtonOption { .transform = [this](ui::EntryState state) -> ui::Element { return this->postProcessButton(ui::text(UserSettings::NextButtonLabel), state); },
                                       .animated_colors {} });
 
-    ui::Component progressSlider = ui::Renderer([this]
+    ui::Component progressSlider = ui::Renderer([this](bool focused)
     {
         const i32 totalWidth = std::max(0_i32, i32(this->sliderBounds.x_max) - i32(this->sliderBounds.x_min) + 1_i32);
         const i32 filledWidth = i32(this->trackProgress * _as(float, totalWidth));
 
-        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
+        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))) |
+                              (this->container->Focused() && focused ? ui::bold : ui::nothing),
                           ui::separatorEmpty(),
                           ui::hbox({
                               ui::separatorCharacter(UserSettings::ProgressBarFill) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::size(ui::WIDTH, ui::EQUAL, filledWidth),
@@ -129,37 +133,52 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
                               ui::xflex | ui::selectionStyleReset });
     });
 
+    ui::Component container = ui::Container::Horizontal({
+        this->playPauseButton,
+        this->stopButton,
+        this->nextButton,
+        this->progressSlider,
+    });
+
     [[nodiscard]] bool Focusable() const final { return true; }
 
     [[nodiscard]] bool OnEvent(ui::Event event) final
     {
+        if (this->ComponentBase::OnEvent(event))
+            return true;
+
         if (!event.is_mouse() || !MusicPlayer::loaded())
             return false;
+
+        if (this->capturedMouse && event.mouse().motion == ui::Mouse::Released)
+        {
+            this->capturedMouse.reset();
+            return false;
+        }
 
         if (event.mouse().button == ui::Mouse::Left && event.mouse().motion == ui::Mouse::Pressed && this->sliderBounds.Contain(event.mouse().x, event.mouse().y) &&
             !this->capturedMouse)
         {
             this->capturedMouse = this->CaptureMouse(event);
-            this->TakeFocus();
+            this->progressSlider->TakeFocus();
         }
+        if (!this->capturedMouse)
+            return false;
 
-        if (this->capturedMouse && event.mouse().motion == ui::Mouse::Released)
-            this->capturedMouse.reset();
+        if (this->sliderBounds.x_max == this->sliderBounds.x_min)
+            return true; // Captured, but no width to seek.
 
-        if (this->sliderBounds.x_max != this->sliderBounds.x_min)
+        const float lastProgress = this->trackProgress;
+        this->trackProgress = _as(float, event.mouse().x - this->sliderBounds.x_min) / _as(float, this->sliderBounds.x_max - this->sliderBounds.x_min);
+        this->trackProgress = std::clamp(this->trackProgress, 0.0f, 1.0f);
+
+        if (this->trackProgress != lastProgress && MusicPlayer::loaded())
         {
-            const float lastProgress = this->trackProgress;
-            this->trackProgress = _as(float, event.mouse().x - this->sliderBounds.x_min) / _as(float, this->sliderBounds.x_max - this->sliderBounds.x_min);
-            this->trackProgress = std::clamp(this->trackProgress, 0.0f, 1.0f);
-
-            if (this->trackProgress != lastProgress && MusicPlayer::loaded())
-            {
-                if (!MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime()))
-                    CommandInvocation::println("[log.error] Failed to seek track.");
-            }
+            if (!MusicPlayer::seek(this->trackProgress * MusicPlayer::totalTime()))
+                CommandInvocation::println("[log.error] Failed to seek track.");
         }
 
-        return this->ComponentBase::OnEvent(event);
+        return true;
     }
 
     [[nodiscard]] ui::Element OnRender() final
@@ -182,16 +201,10 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
         }
 
         return ui::hbox({ this->playPauseButton->Render(), ui::separatorEmpty(), this->stopButton->Render(), ui::separatorEmpty(), this->nextButton->Render(), ui::separatorEmpty(),
-                          this->progressSlider->Render() });
+                          this->progressSlider->Render() | ui::xflex });
     }
 public:
-    StatusBarImpl()
-    {
-        this->Add(this->playPauseButton);
-        this->Add(this->stopButton);
-        this->Add(this->nextButton);
-        this->Add(this->progressSlider);
-    }
+    StatusBarImpl() { this->Add(this->container); }
 
     /// @brief Show a temporary message on the status bar.
     /// @param msg The message to display (will auto-clear after `Config::StatusBarMessageDelay` seconds).

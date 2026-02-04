@@ -34,7 +34,7 @@ struct UserSettings
 
     static constexpr std::string_view PlayButtonLabel = ">";
     static constexpr std::string_view PauseButtonLabel = "#";
-    static constexpr std::string_view StopButtonLabel = "□";
+    static constexpr std::string_view StopButtonLabel = "▪";
     static constexpr std::string_view NextButtonLabel = "»";
     static constexpr std::string_view ProgressBarFill = "━";
 };

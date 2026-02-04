@@ -22,6 +22,10 @@ add_subdirectory(FTXUI EXCLUDE_FROM_ALL)
 set(MINIAUDIO_NO_EXTRA_NODES ON CACHE INTERNAL "" FORCE)
 add_subdirectory(miniaudio EXCLUDE_FROM_ALL)
 
+set(BUILD_BINDINGS OFF CACHE INTERNAL "" FORCE)
+set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
+add_subdirectory(taglib EXCLUDE_FROM_ALL)
+
 file(GLOB_RECURSE TACRAD_HEADERS src/*.h)
 file(GLOB_RECURSE TACRAD_SRCS src/*.cpp)
 
@@ -30,7 +34,7 @@ target_include_directories(tacrad PRIVATE src)
 target_precompile_headers(tacrad PRIVATE [[<Preamble.h>]])
 target_link_libraries(tacrad PRIVATE
     sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys sys.Threading
-    screen dom component miniaudio
+    screen dom component miniaudio tag
 )
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_link_libraries(tacrad PRIVATE stdc++exp)
