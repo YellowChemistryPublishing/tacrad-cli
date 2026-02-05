@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <module/sys>
@@ -19,7 +20,7 @@ class TabSelectImpl : public ui::ComponentBase, public std::enable_shared_from_t
     };
 
     const std::shared_ptr<TabContainerImpl> containerComp;
-    ui::Component selectorComp = ui::Menu(&this->tabValues, &*this->containerComp->tabSelected, []
+    ui::Component selectorComp = ui::Menu(&this->tabValues, &*this->containerComp->tabSelected, []() -> ui::MenuOption
     {
         ui::MenuOption ret = ui::MenuOption::HorizontalAnimated();
         ret.underline.color_active = UserSettings::FlavorEmphasizedColor;
@@ -28,7 +29,7 @@ class TabSelectImpl : public ui::ComponentBase, public std::enable_shared_from_t
         ret.underline.leader_function = ui::animation::easing::Linear;
         ret.underline.follower_duration = Config::FlavorAnimationDuration;
         ret.underline.follower_function = ui::animation::easing::Linear;
-        return ret;
+        return ret; // NOLINT(clang-analyzer-core.StackAddressEscape): Spurious.
     }());
 public:
     explicit TabSelectImpl(std::shared_ptr<TabContainerImpl> containerComp) : containerComp(std::move(containerComp)) { this->Add(this->selectorComp); }

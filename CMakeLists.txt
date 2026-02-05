@@ -31,7 +31,42 @@ file(GLOB_RECURSE TACRAD_SRCS src/*.cpp)
 
 add_executable(tacrad ${TACRAD_SRCS})
 target_include_directories(tacrad PRIVATE src)
-target_precompile_headers(tacrad PRIVATE [[<Preamble.h>]])
+target_precompile_headers(tacrad PRIVATE
+    [[<Preamble.h>]]
+    [[<ftxui/component/animation.hpp>]]
+    [[<ftxui/component/captured_mouse.hpp>]]
+    [[<ftxui/component/component.hpp>]]
+    [[<ftxui/component/component_base.hpp>]]
+    [[<ftxui/component/component_options.hpp>]]
+    [[<ftxui/component/event.hpp>]]
+    [[<ftxui/component/loop.hpp>]]
+    [[<ftxui/component/mouse.hpp>]]
+    [[<ftxui/component/receiver.hpp>]]
+    [[<ftxui/component/screen_interactive.hpp>]]
+    [[<ftxui/component/task.hpp>]]
+    [[<ftxui/dom/canvas.hpp>]]
+    [[<ftxui/dom/deprecated.hpp>]]
+    [[<ftxui/dom/direction.hpp>]]
+    [[<ftxui/dom/elements.hpp>]]
+    [[<ftxui/dom/flexbox_config.hpp>]]
+    [[<ftxui/dom/linear_gradient.hpp>]]
+    [[<ftxui/dom/node.hpp>]]
+    [[<ftxui/dom/requirement.hpp>]]
+    [[<ftxui/dom/selection.hpp>]]
+    [[<ftxui/dom/table.hpp>]]
+    [[<ftxui/dom/take_any_args.hpp>]]
+    [[<ftxui/screen/box.hpp>]]
+    [[<ftxui/screen/color.hpp>]]
+    [[<ftxui/screen/color_info.hpp>]]
+    [[<ftxui/screen/deprecated.hpp>]]
+    [[<ftxui/screen/image.hpp>]]
+    [[<ftxui/screen/pixel.hpp>]]
+    [[<ftxui/screen/screen.hpp>]]
+    [[<ftxui/screen/string.hpp>]]
+    [[<ftxui/screen/terminal.hpp>]]
+    [[<ftxui/util/autoreset.hpp>]]
+    [[<ftxui/util/ref.hpp>]]
+)
 target_link_libraries(tacrad PRIVATE
     sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys sys.Threading
     screen dom component miniaudio tag

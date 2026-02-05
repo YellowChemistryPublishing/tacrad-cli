@@ -2,17 +2,14 @@
 
 #include <Preamble.h>
 
-#include <ftxui/component/component.hpp>
-#include <ftxui/dom/elements.hpp>
 #include <memory>
+#include <utility>
 
 #include <module/sys>
 
-#include <Config.h>
 #include <Style.h>
 #include <components/Playlist.h>
 #include <components/StatusBar.h>
-#include <components/Terminal.h>
 
 class UIImpl : public ui::ComponentBase, public std::enable_shared_from_this<UIImpl>
 {
