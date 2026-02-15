@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Debug.h"
 #include <cctype>
 #include <format>
 #include <iterator>
@@ -87,16 +88,17 @@ struct CommandProcessor
     {
         const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);
         const sz trimEnd = cmd.find_last_not_of(' ') + 1uz;
-        const native_string actionId = native_string(
-            std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */,
-                             trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */));
+        const sys::cstr actionId =
+            sys::cstr(std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */,
+                                       trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */));
 
-        if (actionId == native_string("a"))
+        if (actionId == "a")
         {
             MusicPlayer::autoplay(!MusicPlayer::autoplay());
             return true;
         }
 
-        return CommandInvocation::matchExecuteCommand({ std::format(":{}", sys::cstr(actionId)) });
+        debugLog("{}", actionId);
+        return CommandInvocation::matchExecuteCommand({ std::format(":{}", actionId.c_str()) });
     }
 };

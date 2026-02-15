@@ -80,7 +80,7 @@ class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_th
         this->syncIfNeeded();
         return this->containerComp->Render() | ui::vscroll_indicator | ui::yframe | ui::yflex | ui::reflect(this->bounds);
     }) |
-        ui::CatchEvent([this](const ui::Event event) -> bool
+        ui::CatchEvent([this](const ui::Event& event) -> bool
     {
         if (event == ui::Event::Return)
         {

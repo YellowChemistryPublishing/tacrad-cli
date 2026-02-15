@@ -222,7 +222,9 @@ public:
         const std::string& output = history.back().output;
         _retif(false, output.empty());
 
-        this->showMessage(stringLastLineTrimmed(output));
+        if (std::vector<sys::cstr> v = sys::cstr(output).split('\n'); !v.empty()) [[likely]]
+            this->showMessage(std::string(v.back().trim()));
+
         return true;
     }
 };

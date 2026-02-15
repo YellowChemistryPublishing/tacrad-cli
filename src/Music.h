@@ -20,7 +20,6 @@ _push_nowarn_c_cast();
 #include <string>
 #include <string_view>
 #include <system_error>
-#include <utility>
 #include <vector>
 _pop_nowarn_c_cast();
 

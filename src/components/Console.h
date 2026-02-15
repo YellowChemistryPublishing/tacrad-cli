@@ -90,8 +90,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
     ui::Component containerComp = ui::Container::Vertical({}, &*this->selected);
     ui::Component displayComp = ui::Renderer(this->containerComp, [this]() -> ui::Element
     {
-        const std::vector<CommandInvocation::Entry>& history = CommandInvocation::rawHistory();
-        this->syncIfNeeded(history);
+        this->syncIfNeeded(CommandInvocation::rawHistory());
         return (this->lastLines.empty() ? ui::text("<empty>") | ui::center : this->containerComp->Render()) | ui::vscroll_indicator | ui::yframe | ui::reflect(this->bounds);
     });
 public:
