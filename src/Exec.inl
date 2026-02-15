@@ -73,7 +73,7 @@ private:
         { Query { .startsWith = { { "pause", "p", "#", ":#" } }, .usage = "`pause`", .desc = "Pause current track.", .exactCount = false },                                 &CommandInvocation::pause  },
         { Query { .startsWith = { { "seek", "s", "=" } }, .usage = "`seek <seconds>`", .desc = "Seek to the given position in seconds.", .exactCount = false },
          &CommandInvocation::seek                                                                                                                                                                      },
-        { Query { .startsWith = { { "volume", "vo", "v" } }, .usage = "`vol <linear volume>`", .desc = "Set the volume to the given linear value.", .exactCount = false },
+        { Query { .startsWith = { { "volume", "vol", "v" } }, .usage = "`vol <linear volume>`", .desc = "Set the volume to the given linear value.", .exactCount = false },
          &CommandInvocation::volume                                                                                                                                                                    },
         { Query { .startsWith = { { "stop", "s", ":x" } }, .usage = "`stop`", .desc = "Stop playing music.", .exactCount = false },                                         &CommandInvocation::stop   },
         { Query { .startsWith = { { "next", "n", ":n" } }, .usage = "`next`", .desc = "Play the next track.", .exactCount = false },                                        &CommandInvocation::next   },

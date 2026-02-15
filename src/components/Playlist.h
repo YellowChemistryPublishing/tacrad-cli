@@ -2,11 +2,10 @@
 
 #include <Preamble.h>
 
-#include <algorithm>
-#include <iterator>
+#include <ftxui/component/component.hpp>
+#include <ftxui/dom/elements.hpp>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <module/sys>
@@ -15,114 +14,82 @@
 
 class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_this<PlaylistImpl>
 {
+    std::vector<MusicPlayer::FoundMusic> renderedPlaylist;
     std::vector<std::string> trackNames;
-    std::vector<ui::Box> itemBounds;
-    i32 hovered = 0_i32, highlighted = 0_i32;
+    i32 selected = 0_i32;
 
-    ui::Element postProcessEntry(const ui::EntryState& state)
+    ui::Element postProcessEntry(ui::EntryState state)
     {
-        if (this->itemBounds.size() < this->trackNames.size())
-        {
-            sz cap = 32_uz; // NOLINT(readability-magic-numbers)
-            while ((cap = std::max(cap, sz(this->itemBounds.capacity()))) < this->trackNames.size())
-                cap *= 2_uz;
-            this->itemBounds.reserve(cap);
-            this->itemBounds.resize(this->trackNames.size());
-        }
+        ui::Element ret = ui::text(state.label);
 
-        ui::Element ret = ui::paragraphAlignLeft(state.label);
-
-        if (state.index == MusicPlayer::currentTrack)
-            ret |= ui::inverted;
-        else if (state.index == this->hovered)
-            ret |= ui::underlined;
+        if (state.index == MusicPlayer::currentTrack) // Circumvent native behaviour of unselecting when playlist not focused.
+            ret = ret | ui::inverted;
+        else if (state.index == this->selected)
+            ret = ret | ui::bold | ui::focus;
 
         if (state.active)
-            ret |= ui::bold;
-        else if (state.index != this->hovered && state.index != MusicPlayer::currentTrack)
-            ret |= ui::dim;
+            ret |= ui::underlined;
 
         return ui::hbox({ ui::text(
                               [&]
         {
             if (state.index == MusicPlayer::currentTrack)
-                return "> ";
-            if (state.active)
-                return "* ";
-            return "  ";
+                return ">";
+            if (state.index == this->selected)
+                return "*";
+            return " ";
         }()),
-                          ret }) |
-            ui::reflect(this->itemBounds[sz(state.index)]);
+                          ui::separatorEmpty(), ret });
     }
     void onEntryEnter()
     {
-        MusicPlayer::currentTrack = this->highlighted;
+        MusicPlayer::currentTrack = this->selected;
         (void)MusicPlayer::play();
     }
 
-    ui::Component menuComp =
-        ui::Menu(&this->trackNames, &*this->highlighted,
-                 ui::MenuOption {
-                     .entries {},
-                     .underline = ui::UnderlineOption {},
-                     .entries_option = ui::MenuEntryOption { .label = "",
-                               .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); },
-                               .animated_colors {} },
-                     .elements_prefix {},
-                     .elements_infix {},
-                     .elements_postfix {},
-                     .on_change {},
-                     .on_enter = [this] { this->onEntryEnter(); }
-    }) |
-        ui::CatchEvent([this](ui::Event event) -> bool
+    void syncIfNeeded()
     {
-        if (this->itemBounds.size() > this->trackNames.size())
-            this->itemBounds.erase(this->itemBounds.begin() + ssz(this->trackNames.size()));
-
-        if (!event.is_mouse() || !this->bounds.Contain(event.mouse().x, event.mouse().y))
-            return false;
-
-        if (event.mouse().motion != ui::Mouse::Moved && (event.mouse().button != ui::Mouse::Left || event.mouse().motion != ui::Mouse::Pressed))
-            return false;
-
-        const ssz foundIndex =
-            std::distance(this->itemBounds.begin(), std::ranges::find_if(this->itemBounds, [&](const ui::Box& box) { return box.Contain(event.mouse().x, event.mouse().y); }));
-        if (foundIndex >= this->itemBounds.size())
-            return false;
-
-        if (event.mouse().motion == ui::Mouse::Moved)
-            this->hovered = i32(foundIndex);
-        else
+        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::currentPlaylist();
+        if (this->renderedPlaylist != playlist)
         {
-            this->highlighted = i32(foundIndex);
-            this->menuComp->TakeFocus();
+            this->containerComp->DetachAllChildren();
+            this->trackNames.clear();
+            for (const auto& track : playlist)
+            {
+                this->trackNames.emplace_back(track.name);
+                this->containerComp->Add(ui::MenuEntry(
+                    track.name,
+                    ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); }, .animated_colors {} }));
+            }
+
+            this->renderedPlaylist = playlist;
         }
 
-        return true;
-    });
+        if (this->currentTrackOld != MusicPlayer::currentTrack)
+        {
+            this->selected = i32(MusicPlayer::currentTrack);
+            this->currentTrackOld = MusicPlayer::currentTrack;
+        }
+    }
 
     i32 currentTrackOld = MusicPlayer::currentTrack;
     ui::Box bounds;
-    ui::Component displayComp = ui::Renderer(this->menuComp, [this]
+    ui::Component containerComp = ui::Container::Vertical({}, &*this->selected);
+    ui::Component displayComp = ui::Renderer(this->containerComp,
+                                             [this]() -> ui::Element
     {
-        if (this->currentTrackOld != MusicPlayer::currentTrack)
+        this->syncIfNeeded();
+        return this->containerComp->Render() | ui::vscroll_indicator | ui::yframe | ui::yflex | ui::reflect(this->bounds);
+    }) |
+        ui::CatchEvent([this](const ui::Event event) -> bool
+    {
+        if (event == ui::Event::Return)
         {
-            this->highlighted = i32(MusicPlayer::currentTrack);
-            this->currentTrackOld = MusicPlayer::currentTrack;
+            this->onEntryEnter();
+            return true;
         }
 
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::currentPlaylist();
-        if (this->trackNames.size() > playlist.size())
-            this->trackNames.erase(this->trackNames.begin() + *ssz(playlist.size()));
-        for (sz i = 0_uz; i < this->trackNames.size(); i++)
-            this->trackNames[i] = playlist[i].name;
-        while (this->trackNames.size() < playlist.size())
-        {
-            std::string str = playlist[this->trackNames.size()].name;
-            this->trackNames.emplace_back(std::move(str));
-        }
-
-        return this->menuComp->Render() | ui::vscroll_indicator | ui::yframe | ui::yflex | ui::reflect(this->bounds);
+        return false;
     });
 public:
     PlaylistImpl()

@@ -2,11 +2,12 @@
 
 #include <Preamble.h>
 
+#include <ftxui/dom/elements.hpp>
 #include <memory>
-#include <utility>
 
 #include <module/sys>
 
+#include <Config.h>
 #include <Style.h>
 #include <components/Playlist.h>
 #include <components/StatusBar.h>
@@ -21,14 +22,15 @@ class UIImpl : public ui::ComponentBase, public std::enable_shared_from_this<UII
     ui::Component detailsComp = ui::Renderer([] { return ui::text("details here"); });
 
     std::shared_ptr<StatusBarImpl> statBarComp = std::static_pointer_cast<StatusBarImpl>(StatusBar());
-    ui::Component containerComp = ui::Container::Vertical({ [this]
-    {
-        ui::Component ret =
-            ui::ResizableSplit({ .main = tagSelectComp, .back = playlistComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep });
-        ret = ui::ResizableSplit({ .main = detailsComp, .back = std::move(ret), .direction = ui::Direction::Right, .main_size = &*this->rightSize, .separator_func = psep });
-        return ret;
-    }(), this->statBarComp }) |
-        ui::Renderer([](ui::Element elem) { return std::move(elem) | ui::yflex; });
+    ui::Component containerComp = ui::Container::Vertical(
+        { ui::ResizableSplit({ .main = detailsComp,
+                               .back = ui::ResizableSplit(
+                                   { .main = tagSelectComp, .back = playlistComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep }),
+                               .direction = ui::Direction::Right,
+                               .main_size = &*this->rightSize,
+                               .separator_func = psep }) |
+              ui::yflex,
+          ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
     explicit UIImpl() { this->Add(this->containerComp); }
 

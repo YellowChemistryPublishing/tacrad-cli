@@ -17,7 +17,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
     std::vector<std::string> lastLines;
     sz lastLinesSizeOld = 0_uz;
     i32 lastLineWidth = 1_i32;
-    i32 selected = 0_i32, selectedOld = 0_i32;
+    i32 selected = 0_i32;
 
     sz lastHistorySize = 0_uz;
     ui::Box bounds;
@@ -48,7 +48,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
             process(entry.output);
         }
     }
-    void syncLineComponents(const std::vector<CommandInvocation::Entry>& history)
+    void sync(const std::vector<CommandInvocation::Entry>& history)
     {
         const bool follow = (this->selected >= i32(this->containerComp->ChildCount()) - 1_i32) || (this->containerComp->ChildCount() == 0_uz);
 
@@ -59,6 +59,14 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
 
         if (follow && !this->lastLines.empty())
             this->selected = i32(this->lastLines.size()) - 1_i32;
+    }
+    void syncIfNeeded(const std::vector<CommandInvocation::Entry>& history)
+    {
+        if (this->lastHistorySize != history.size())
+        {
+            this->renderLastLines(history);
+            this->sync(history);
+        }
     }
 
     [[nodiscard]] ui::Element postProcessRow(const ui::EntryState& state)
@@ -82,16 +90,9 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
     ui::Component containerComp = ui::Container::Vertical({}, &*this->selected);
     ui::Component displayComp = ui::Renderer(this->containerComp, [this]() -> ui::Element
     {
-        const auto internalRender = [&]() -> ui::Element
-        { return (this->lastLines.empty() ? ui::text("<empty>") | ui::center : this->containerComp->Render()) | ui::vscroll_indicator | ui::yframe | ui::reflect(this->bounds); };
-
         const std::vector<CommandInvocation::Entry>& history = CommandInvocation::rawHistory();
-        _retif(internalRender(), this->lastHistorySize == history.size());
-
-        this->renderLastLines(history);
-        this->syncLineComponents(history);
-
-        return internalRender();
+        this->syncIfNeeded(history);
+        return (this->lastLines.empty() ? ui::text("<empty>") | ui::center : this->containerComp->Render()) | ui::vscroll_indicator | ui::yframe | ui::reflect(this->bounds);
     });
 public:
     explicit ConsoleImpl() { this->Add(this->displayComp); }

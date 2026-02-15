@@ -34,7 +34,7 @@ _pop_nowarn_c_cast();
 class MusicPlayer
 {
     static inline std::random_device seeder;
-    static inline std::mt19937 randEngine { _as(std::mt19937, seeder()) };
+    static inline std::mt19937 randEngine { _as(std::mt19937, MusicPlayer::seeder()) };
     static inline std::uniform_real_distribution<float> dist { 0.0f, 1.0f };
 
     static ma_engine& audioEngine()
@@ -179,7 +179,7 @@ public:
     }
 
     static inline i32 currentTrack = i32::sentinel();
-    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
+    [[nodiscard]] static auto currentPlaylist() { return MusicPlayer::playlist; }
 
     static bool generateShuffledPlaylist()
     {
@@ -201,7 +201,6 @@ public:
         }
 
         std::shuffle(MusicPlayer::playlist.begin(), MusicPlayer::playlist.end(), MusicPlayer::randEngine);
-        std::shuffle(MusicPlayer::playlist.begin(), MusicPlayer::playlist.end(), MusicPlayer::randEngine); // Again for good measure.:
         return true;
     }
 

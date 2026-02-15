@@ -119,7 +119,7 @@ class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_th
                                                           .multiline = false,
                                                           .on_change = [this]() -> void { this->onInputChange(); },
                                                           .on_enter = [this]() -> void { this->onInputEnter(); } }) |
-        ui::Renderer([this](ui::Element elem) { return std::move(elem) | ui::reflect(this->bounds); }) |
+        ui::reflect(this->bounds) |
         ui::CatchEvent([this](ui::Event event)
     {
         if (event.is_mouse() && event.mouse().button == ui::Mouse::Left && this->bounds.Contain(event.mouse().x, event.mouse().y))
