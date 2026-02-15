@@ -1,60 +1,34 @@
 #pragma once
 
 #include <cctype>
-#include <codecvt>
-#include <filesystem>
-#include <locale>
-#include <memory>
 #include <set>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Debug.h>
 
-/// @brief Convert a `std::string` to `std::u32string`.
-[[nodiscard]] inline std::u32string u32stringFrom(std::string_view str)
+inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vector<std::string>& out)
 {
-    try
+    sys::str32_view v = std::span(str);
+    for (auto it = v.begin(); it < v.end();)
     {
-        _push_nowarn_deprecated();
-        return std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>().from_bytes(std::to_address(str.begin()), std::to_address(str.end()));
-        _pop_nowarn_deprecated();
-    }
-    catch (const std::range_error&)
-    {
-        debugLog("Range error: {}.", str);
-        return U"";
-    }
-}
-/// @brief Convert a `std::u8string` to `std::string`.
-[[nodiscard]] inline std::string stringFrom(std::u8string_view str) { return { str.begin(), str.end() }; }
+        auto itEnd = it;
+        sz counter = 0_uz;
+        while (itEnd < v.end() && *itEnd != '\n' && counter < len)
+        {
+            ++itEnd;
+            ++counter;
+        }
 
-inline std::u32string u32stringToLower(std::u32string_view str)
-{
-    std::u32string ret;
-    ret.reserve(str.size());
-    for (const char32_t c : str)
-        ret.push_back(_as(char32_t, std::tolower(_as(int, c))));
-    return ret;
-}
-
-inline void wstringSplitLengthConstrained(std::string_view str, sz len, std::vector<std::string>& out)
-{
-    for (sz i = 0_uz; i < str.size();)
-    {
-        sz iEnd = i;
-        while (iEnd < str.size() && str[iEnd] != '\n' && sz(iEnd - i) < sz(len))
-            iEnd++;
-        out.emplace_back(str.substr(sz(i), sz(iEnd - i)));
-        i = (iEnd == i || (iEnd < str.size() && str[iEnd] == '\n')) ? iEnd + 1_uz : iEnd;
+        out.emplace_back(std::to_address(it), std::to_address(itEnd));
+        it = (itEnd == it || (itEnd < v.end() && *itEnd == '\n')) ? ++itEnd : itEnd;
     }
 }
-
-[[nodiscard]] inline std::string wstringLastLineTrimmed(std::string_view str)
+[[nodiscard]] inline std::string stringLastLineTrimmed(std::string_view str)
 {
     const sz lastNonNewline = str.find_last_not_of('\n');
     if (lastNonNewline == std::string::npos)
@@ -85,7 +59,7 @@ inline void wstringSplitLengthConstrained(std::string_view str, sz len, std::vec
 }
 
 /// @brief Base64 encode a string for OSC 52 clipboard.
-[[nodiscard]] inline std::string base64Encode(std::string_view input)
+[[nodiscard]] inline std::string base64Encode(std::u8string_view input)
 {
     static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     std::string ret;
@@ -108,11 +82,4 @@ inline void wstringSplitLengthConstrained(std::string_view str, sz len, std::vec
     }
 
     return ret;
-}
-
-/// @brief Get a UTF-8 string from a path.
-[[nodiscard]] inline std::string pathToString(const std::filesystem::path& path)
-{
-    const std::u8string u8 = path.u8string();
-    return { u8.begin(), u8.end() };
 }

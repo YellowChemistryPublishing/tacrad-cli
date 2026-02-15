@@ -41,7 +41,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
                 if (text.empty())
                     return;
 
-                wstringSplitLengthConstrained(text, sz(maxLineWidth), this->lastLines);
+                stringSplitLengthConstrained(text, sz(maxLineWidth), this->lastLines);
             };
 
             process(entry.cmd);

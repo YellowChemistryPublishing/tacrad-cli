@@ -5,7 +5,6 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include <module/sys>
@@ -15,7 +14,7 @@
 class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_this<PlaylistImpl>
 {
     std::vector<MusicPlayer::FoundMusic> renderedPlaylist;
-    std::vector<std::string> trackNames;
+    std::vector<sys::str> trackNames;
     i32 selected = 0_i32;
 
     ui::Element postProcessEntry(ui::EntryState state)
@@ -58,7 +57,7 @@ class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_th
             {
                 this->trackNames.emplace_back(track.name);
                 this->containerComp->Add(ui::MenuEntry(
-                    track.name,
+                    _as(std::string_view, sys::cstr(track.name)),
                     ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); }, .animated_colors {} }));
             }
 

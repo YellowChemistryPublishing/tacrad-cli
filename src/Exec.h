@@ -111,7 +111,7 @@ inline void CommandInvocation::play(const std::vector<std::string>& cmd)
         lookupName.append(word);
     }
 
-    if (!MusicPlayer::queryStartMusic(lookupName))
+    if (!MusicPlayer::queryStartMusic(sys::str(lookupName)))
         CommandInvocation::println("[log.error] Failed to start track.");
 }
 inline void CommandInvocation::resume(const std::vector<std::string>& cmd)

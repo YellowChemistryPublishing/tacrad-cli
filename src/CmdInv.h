@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Config.h>
 #include <Exec.inl>
@@ -86,16 +87,16 @@ struct CommandProcessor
     {
         const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);
         const sz trimEnd = cmd.find_last_not_of(' ') + 1uz;
-        const std::u32string actionId = u32stringToLower(u32stringFrom(
+        const native_string actionId = native_string(
             std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */,
-                             trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */)));
+                             trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */));
 
-        if (actionId == U"a")
+        if (actionId == native_string("a"))
         {
             MusicPlayer::autoplay(!MusicPlayer::autoplay());
             return true;
         }
 
-        return CommandInvocation::matchExecuteCommand({ std::format(":{}", stringFrom(std::filesystem::path(actionId).generic_u8string())) });
+        return CommandInvocation::matchExecuteCommand({ std::format(":{}", sys::cstr(actionId)) });
     }
 };

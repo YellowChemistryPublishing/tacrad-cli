@@ -25,11 +25,18 @@ _push_nowarn_c_cast();
 _pop_nowarn_c_cast();
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Debug.h>
 #include <Exec.inl>
 #include <Screen.h>
 #include <Utility.h>
+
+#if _libcxxext_os_windows
+using native_string = sys::wstr; // NOLINT(readability-identifier-naming)
+#else
+using native_string = sys::cstr; // NOLINT(readability-identifier-naming)
+#endif
 
 class MusicPlayer
 {
@@ -85,7 +92,7 @@ class MusicPlayer
     struct Audio
     {
         ma_sound sound {}; // _MUST_ be valid.
-        std::string name;
+        native_string name;
 
         sys::integer<ma_uint64> prevFrame { 0 };
         sys::integer<ma_uint64> frameLen { 0 };
@@ -96,7 +103,7 @@ class MusicPlayer
 public:
     struct FoundMusic
     {
-        std::string name;
+        sys::str name;
         std::filesystem::path file;
 
         friend bool operator==(const FoundMusic&, const FoundMusic&) = default;
@@ -134,12 +141,12 @@ public:
     /// @note Thread-safe.
     static void autoplay(bool value) { MusicPlayer::shouldAutoplay.store(value); }
 
-    static sys::result<FoundMusic> musicLookup(std::string_view name)
+    static sys::result<FoundMusic> musicLookup(std::u8string_view name)
     {
         namespace fs = std::filesystem;
 
         std::error_code ec; // NOLINT(misc-const-correctness) TODO(halloimdragon): Use this everywhere.
-        const std::u32string compare = u32stringToLower(u32stringFrom(name));
+        const sys::str compare = sys::str(name).to_lower();
 
         if (!fs::exists("music/", ec))
             return nullptr;
@@ -156,7 +163,7 @@ public:
                 if (dir.is_regular_file(ec))
                 {
                     if (pred(dir.path().stem().generic_u32string()))
-                        return FoundMusic { .name = stringFrom(dir.path().stem().generic_u8string()), .file = dir.path() };
+                        return FoundMusic { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
                 }
                 if (ec)
                 {
@@ -168,18 +175,18 @@ public:
             return nullptr;
         };
 
-        sys::result<FoundMusic> res = tryFindWithCompare([&](std::u32string_view trackName) { return u32stringToLower(trackName) == compare; });
+        sys::result<FoundMusic> res = tryFindWithCompare([&](std::u32string_view trackName) { return sys::str(trackName).to_lower() == compare; });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&](std::u32string_view trackName) { return u32stringToLower(trackName).starts_with(compare); });
+        res = tryFindWithCompare([&](std::u32string_view trackName) { return sys::str(trackName).to_lower().starts_with(compare); });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&](std::u32string_view trackName) { return u32stringToLower(trackName).contains(compare); });
+        res = tryFindWithCompare([&](std::u32string_view trackName) { return sys::str(trackName).to_lower().contains(compare); });
         _retif(res.move(), res);
 
         return nullptr;
     }
 
     static inline i32 currentTrack = i32::sentinel();
-    [[nodiscard]] static auto currentPlaylist() { return MusicPlayer::playlist; }
+    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
 
     static bool generateShuffledPlaylist()
     {
@@ -189,7 +196,7 @@ public:
         MusicPlayer::playlist.clear();
         for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
             if (dir.is_regular_file(ec))
-                MusicPlayer::playlist.emplace_back(FoundMusic { .name = stringFrom(dir.path().stem().generic_u8string()), .file = dir.path() });
+                MusicPlayer::playlist.emplace_back(FoundMusic { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() });
 
         if (ec)
             CommandInvocation::println("[log.warn] Couldn't fully iterate through music directory, got error code {}.", ec.value());
@@ -263,7 +270,7 @@ public:
         return true;
     }
 
-    [[nodiscard]] static bool startMusic(std::string foundMusicName, const std::filesystem::path& foundMusicFile)
+    [[nodiscard]] static bool startMusic(sys::str foundMusicName, const std::filesystem::path& foundMusicFile)
     {
         namespace fs = std::filesystem;
 
@@ -288,7 +295,8 @@ public:
 #endif
             res != MA_SUCCESS)
         {
-            CommandInvocation::println("[log.error] Failed to load track `{}`, with error code {}.", stringFrom(fs::path(foundMusicFile).generic_u8string()), _as(int, res));
+            CommandInvocation::println("[log.error] Failed to load track `{}`, with error code {}.", _as(sys::cstr, sys::str(fs::path(foundMusicFile).generic_u8string())),
+                                       _as(int, res));
             return false;
         }
         sys::optional_destructor sound_dtor = [] noexcept { ma_sound_uninit(&MusicPlayer::audio->sound); };
@@ -303,7 +311,7 @@ public:
             CommandInvocation::println("[log.error] Failed to get track length in seconds, with error code {}.", _as(int, res));
             return false;
         }
-        aud.name = std::move(foundMusicName);
+        aud.name = native_string(foundMusicName);
 
         if (ma_result res = ma_sound_set_end_callback(&aud.sound,
                                                       [](void*, ma_sound*)
@@ -338,7 +346,7 @@ public:
         aud_dtor.release();
         return true;
     }
-    [[nodiscard]] static bool queryStartMusic(std::string_view query)
+    [[nodiscard]] static bool queryStartMusic(std::u8string_view query)
     {
         sys::result<FoundMusic> foundRes = MusicPlayer::musicLookup(query);
         _retif(false, !foundRes);

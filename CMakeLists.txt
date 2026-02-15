@@ -68,7 +68,7 @@ target_precompile_headers(tacrad PRIVATE
     [[<ftxui/util/ref.hpp>]]
 )
 target_link_libraries(tacrad PRIVATE
-    sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys sys.Threading
+    sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys sys.Text
     screen dom component miniaudio tag
 )
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

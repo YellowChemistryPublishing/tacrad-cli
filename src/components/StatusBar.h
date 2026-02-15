@@ -222,7 +222,7 @@ public:
         const std::string& output = history.back().output;
         _retif(false, output.empty());
 
-        this->showMessage(wstringLastLineTrimmed(output));
+        this->showMessage(stringLastLineTrimmed(output));
         return true;
     }
 };

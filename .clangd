@@ -4,6 +4,7 @@ CompileFlags:
     Add:
         - "-I../src"
         - "-I../libcxxext/sys"
+        - "-I../libcxxext/sys.Text"
         - "-I../libcxxext/sys.Threading"
         - "-I../libcxxext/sys.Threading/platform"
         - "-I../miniaudio"
