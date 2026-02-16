@@ -1,11 +1,16 @@
 #pragma once
 
-#include <Preamble.h>
-
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <memory>
 #include <utility>
 
 #include <module/sys>
+
+namespace ui = ftxui;
 
 class TabContainerImpl : public ui::ComponentBase, public std::enable_shared_from_this<TabContainerImpl>
 {

@@ -1,7 +1,14 @@
 #pragma once
 
-#include <Preamble.h>
-
+#include <ftxui/component/animation.hpp>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/component_options.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/screen/color.hpp>
+#include <ftxui/util/ref.hpp>
 #include <memory>
 #include <string>
 #include <utility>
@@ -11,6 +18,8 @@
 
 #include <Config.h>
 #include <components/TabContainer.h>
+
+namespace ui = ftxui;
 
 class TabSelectImpl : public ui::ComponentBase, public std::enable_shared_from_this<TabSelectImpl>
 {

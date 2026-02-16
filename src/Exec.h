@@ -1,19 +1,22 @@
 #pragma once
 
-#include <Preamble.h>
-
 #include <cstddef>
 #include <cstdlib>
 #include <format>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <iterator>
 #include <ranges>
 #include <span>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Exec.inl>
 #include <Music.h>
@@ -111,7 +114,7 @@ inline void CommandInvocation::play(const std::vector<std::string>& cmd)
         lookupName.append(word);
     }
 
-    if (!MusicPlayer::queryStartMusic(sys::str(lookupName)))
+    if (!MusicPlayer::queryStartMusic(sys::str(_as(std::string_view, lookupName))))
         CommandInvocation::println("[log.error] Failed to start track.");
 }
 inline void CommandInvocation::resume(const std::vector<std::string>& cmd)

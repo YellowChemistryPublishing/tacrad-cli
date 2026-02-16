@@ -1,12 +1,21 @@
 #pragma once
 
-#include "ftxui/component/mouse.hpp"
-#include <Preamble.h>
-
 #include <cctype>
 #include <chrono>
 #include <condition_variable>
 #include <format>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/component_options.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/mouse.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/component/task.hpp>
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/node.hpp>
+#include <ftxui/screen/box.hpp>
+#include <ftxui/screen/color.hpp>
 #include <memory>
 #include <mutex>
 #include <stop_token>
@@ -20,6 +29,8 @@
 #include <Config.h>
 #include <Screen.h>
 #include <components/StatusBar.h>
+
+namespace ui = ftxui;
 
 /// @brief Terminal input component with blinking cursor.
 /// @note Pass `byptr`.

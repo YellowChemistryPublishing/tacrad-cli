@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Preamble.h>
-
 #include <CompilerWarnings.h>
 _push_nowarn_c_cast();
 #include <algorithm>
@@ -11,6 +9,12 @@ _push_nowarn_c_cast();
 #include <cstring>
 #include <filesystem>
 #include <format>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/component/task.hpp>
 #include <iterator>
 #include <miniaudio.h>
 #include <new>
@@ -29,7 +33,8 @@ _pop_nowarn_c_cast();
 #include <Debug.h>
 #include <Exec.inl>
 #include <Screen.h>
-#include <Utility.h>
+
+namespace ui = ftxui;
 
 #if _libcxxext_os_windows
 using native_string = sys::wstr; // NOLINT(readability-identifier-naming)

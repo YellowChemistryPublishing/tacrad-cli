@@ -1,6 +1,14 @@
-#include <Preamble.h>
-
 #include <algorithm>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/component_options.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/node.hpp>
+#include <ftxui/screen/box.hpp>
+#include <ftxui/util/ref.hpp>
 #include <memory>
 #include <span>
 #include <string>
@@ -11,6 +19,8 @@
 
 #include <Exec.inl>
 #include <Utility.h>
+
+namespace ui = ftxui;
 
 class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_this<ConsoleImpl>
 {

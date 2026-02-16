@@ -1,9 +1,11 @@
 #pragma once
 
-#include <Preamble.h>
-
 #include <chrono>
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
 #include <string_view>
+
+namespace ui = ftxui;
 
 /// @brief Global static configuration.
 struct Config
@@ -11,7 +13,7 @@ struct Config
     Config() = delete;
 
     static constexpr std::string_view ApplicationName = "♪♫ tacrad-cli";
-    static constexpr std::string_view VersionIdentifier = "v0.1.0-alpha";
+    static constexpr std::string_view VersionIdentifier = "v0.2.0-alpha";
 
     static constexpr char QuickActionKey = ':';
     static constexpr std::chrono::milliseconds QuickActionDelay = std::chrono::milliseconds(1000);

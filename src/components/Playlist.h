@@ -1,15 +1,23 @@
 #pragma once
 
-#include <Preamble.h>
-
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/component_options.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/node.hpp>
+#include <ftxui/screen/box.hpp>
 #include <memory>
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Music.h>
+
+namespace ui = ftxui;
 
 class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_this<PlaylistImpl>
 {

@@ -1,13 +1,22 @@
 #pragma once
 
-#include <Preamble.h>
-
 #include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <format>
 #include <ftxui/component/captured_mouse.hpp>
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
+#include <ftxui/component/component_options.hpp>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/mouse.hpp>
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
+#include <ftxui/dom/node.hpp>
+#include <ftxui/screen/box.hpp>
+#include <ftxui/screen/color.hpp>
+#include <ftxui/util/ref.hpp>
 #include <memory>
 #include <mutex>
 #include <stop_token>
@@ -17,12 +26,14 @@
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Config.h>
 #include <Exec.inl>
 #include <Music.h>
 #include <Screen.h>
-#include <Utility.h>
+
+namespace ui = ftxui;
 
 /// @brief Status bar component that displays temporary messages and track progress.
 /// @note

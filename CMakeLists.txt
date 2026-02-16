@@ -14,9 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(libcxxext/cmake/clang_tidy.cmake)
 add_subdirectory(libcxxext EXCLUDE_FROM_ALL)
-
 add_subdirectory(FTXUI EXCLUDE_FROM_ALL)
 
 set(MINIAUDIO_NO_EXTRA_NODES ON CACHE INTERNAL "" FORCE)
@@ -32,7 +30,6 @@ file(GLOB_RECURSE TACRAD_SRCS src/*.cpp)
 add_executable(tacrad ${TACRAD_SRCS})
 target_include_directories(tacrad PRIVATE src)
 target_precompile_headers(tacrad PRIVATE
-    [[<Preamble.h>]]
     [[<ftxui/component/animation.hpp>]]
     [[<ftxui/component/captured_mouse.hpp>]]
     [[<ftxui/component/component.hpp>]]
@@ -68,12 +65,10 @@ target_precompile_headers(tacrad PRIVATE
     [[<ftxui/util/ref.hpp>]]
 )
 target_link_libraries(tacrad PRIVATE
-    sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys sys.Text
+    sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys.BuildSupport.stdc++inc
+    sys sys.Text
     screen dom component miniaudio tag
 )
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_link_libraries(tacrad PRIVATE stdc++exp)
-endif()
 
 target_lint_clang_tidy(tacrad "-header-filter=src/.*" ${TACRAD_HEADERS})
 

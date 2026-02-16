@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Debug.h"
 #include <cctype>
 #include <format>
 #include <iterator>
@@ -17,7 +16,6 @@
 #include <Config.h>
 #include <Exec.inl>
 #include <Music.h>
-#include <Utility.h>
 #include <components/StatusBar.h>
 
 struct CommandProcessor
@@ -98,7 +96,6 @@ struct CommandProcessor
             return true;
         }
 
-        debugLog("{}", actionId);
-        return CommandInvocation::matchExecuteCommand({ std::format(":{}", actionId.c_str()) });
+        return CommandInvocation::matchExecuteCommand({ std::format(":{}", actionId) });
     }
 };

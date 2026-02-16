@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cctype>
+#include <memory>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -9,11 +11,9 @@
 #include <module/sys>
 #include <module/sys.Text>
 
-#include <Debug.h>
-
 inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vector<std::string>& out)
 {
-    sys::str32_view v = std::span(str);
+    const sys::str32_view v = std::span(str);
     for (auto it = v.begin(); it < v.end();)
     {
         auto itEnd = it;
