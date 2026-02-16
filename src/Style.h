@@ -41,3 +41,14 @@ inline ui::ElementDecorator vscroll(ui::Box& bounds)
 {
     return [&bounds](ui::Element elem) { return std::move(elem) | ui::vscroll_indicator | ui::yframe | ui::reflect(bounds); };
 }
+
+inline ui::Element postProcessIconButton(ui::Element elem, const ui::EntryState& state)
+{
+    if (state.active)
+        elem = std::move(elem) | ui::bold | ui::focus;
+    if (state.focused)
+        elem = std::move(elem) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::underlined;
+    else
+        elem |= ui::color(UserSettings::FlavorUnemphasizedColor);
+    return elem;
+}

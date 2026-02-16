@@ -104,8 +104,8 @@ class MusicPlayer
 public:
     struct FoundMusic
     {
-        sys::str name;
-        std::filesystem::path file;
+        sys::str name = u8"";
+        std::filesystem::path file {};
 
         std::string artists = "unknown";
 
@@ -114,6 +114,7 @@ public:
     };
 private:
     static inline std::map<std::u8string, std::vector<FoundMusic>> playlists;
+    static inline std::set<std::u8string> lastPlaylistReorderWasReshuffle;
 public:
     MusicPlayer() = delete;
 
@@ -242,10 +243,46 @@ public:
 
         return true;
     }
-    static void shuffleCurrentPlaylist()
+
+    static void rearrangeCurrentPlaylist(auto&& reorder)
     {
         std::vector<FoundMusic>& playlist = MusicPlayer::playlists[std::u8string(MusicPlayer::playlistTag)];
-        std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
+        const FoundMusic toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : FoundMusic {};
+
+        reorder(playlist);
+
+        for (sz i = 0_uz; i < playlist.size(); i++)
+        {
+            if (playlist[i] == toFind)
+            {
+                MusicPlayer::currentTrack = i32(i);
+                break;
+            }
+        }
+    }
+    static void shuffleCurrentPlaylist()
+    {
+        MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist)
+        {
+            std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
+            MusicPlayer::lastPlaylistReorderWasReshuffle.insert(std::u8string(MusicPlayer::playlistTag));
+        });
+    }
+    static void sortCurrentPlaylistLexicographically()
+    {
+        MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist)
+        {
+            std::ranges::sort(playlist);
+            MusicPlayer::lastPlaylistReorderWasReshuffle.erase(std::u8string(MusicPlayer::playlistTag));
+        });
+    }
+    static void sortCurrentPlaylistReverseLexicographically()
+    {
+        MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist)
+        {
+            std::ranges::sort(playlist, std::greater<>());
+            MusicPlayer::lastPlaylistReorderWasReshuffle.erase(std::u8string(MusicPlayer::playlistTag));
+        });
     }
 
     [[nodiscard]] static bool resume()
@@ -421,7 +458,8 @@ public:
             MusicPlayer::currentTrack = 0_i32;
             _retif(false, playlist.empty());
 
-            MusicPlayer::shuffleCurrentPlaylist();
+            if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(std::u8string(MusicPlayer::playlistTag)))
+                MusicPlayer::shuffleCurrentPlaylist();
         }
 
         Screen().PostEvent(ui::Event::Custom);

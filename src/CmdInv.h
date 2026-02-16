@@ -86,9 +86,11 @@ struct CommandProcessor
     {
         const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);
         const sz trimEnd = cmd.find_last_not_of(' ') + 1uz;
-        const sys::cstr actionId =
-            sys::cstr(std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */,
-                                       trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end() /* NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic) */));
+        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        const sys::cstr actionId = sys::cstr(std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin(),
+                                                              trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end()))
+                                       .to_lower();
+        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         if (actionId == "a")
         {

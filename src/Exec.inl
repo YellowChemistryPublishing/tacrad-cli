@@ -47,8 +47,6 @@
 #include <Screen.h>
 #include <Utility.h>
 
-namespace ui = ftxui;
-
 class CommandInvocation
 {
 public:

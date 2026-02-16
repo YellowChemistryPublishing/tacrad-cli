@@ -14,6 +14,7 @@
 #include <Config.h>
 #include <Style.h>
 #include <components/Playlist.h>
+#include <components/PlaylistBar.h>
 #include <components/StatusBar.h>
 #include <components/TagSelector.h>
 
@@ -25,7 +26,7 @@ class UIImpl : public ui::ComponentBase
     i32 rightSize = 32_i32; // NOLINT(readability-magic-numbers)
 
     std::shared_ptr<TagSelectorImpl> tagListComp = std::static_pointer_cast<TagSelectorImpl>(TagSelector());
-    ui::Component playlistComp = Playlist(tagListComp);
+    ui::Component playlistComp = ui::Container::Vertical({ Playlist(tagListComp) | ui::yflex, PlaylistBar() });
     ui::Component trackInfoComp = ui::Renderer([] { return ui::text("details here"); });
 
     std::shared_ptr<StatusBarImpl> statBarComp = std::static_pointer_cast<StatusBarImpl>(StatusBar());

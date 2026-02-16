@@ -40,5 +40,11 @@ struct UserSettings
     static constexpr std::string_view PauseButtonLabel = "#";
     static constexpr std::string_view StopButtonLabel = "▪";
     static constexpr std::string_view NextButtonLabel = "»";
+
     static constexpr std::string_view ProgressBarFill = "━";
+
+    static constexpr std::string_view ReloadLabel = "●";
+    static constexpr std::string_view LexicographicSortLabel = "a↑";
+    static constexpr std::string_view ReverseLexicographicSortLabel = "z↓";
+    static constexpr std::string_view ShuffleLabel = "↔";
 };
