@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cctype>
+#include <ftxui/screen/box.hpp>
 #include <memory>
 #include <set>
 #include <span>
@@ -10,6 +10,8 @@
 
 #include <module/sys>
 #include <module/sys.Text>
+
+namespace ui = ftxui;
 
 inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vector<std::string>& out)
 {
@@ -28,22 +30,30 @@ inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vect
         it = (itEnd == it || (itEnd < v.end() && *itEnd == '\n')) ? ++itEnd : itEnd;
     }
 }
-[[nodiscard]] inline std::string stringLastLineTrimmed(std::string_view str)
+
+[[nodiscard]] inline std::string truncateStrForDisplay(const std::string_view str, const ui::Box& bounds)
 {
-    const sz lastNonNewline = str.find_last_not_of('\n');
-    if (lastNonNewline == std::string::npos)
-        return "";
+    u64 ccount = 0_u64;
+    ssz trimFrom = 0_z;
+    const sys::str32_view v(str);
+    for (auto it = v.begin(); it != v.end();)
+    {
+        // Six space characters: ` * [text]|  `.
+        if (++ccount > i32(bounds.x_max) - i32(bounds.x_min) - 6_i32) // NOLINT(readability-magic-numbers)
+            break;
 
-    sz end = lastNonNewline + 1_uz;
-    sz beg = str.rfind('\n', lastNonNewline);
-    beg = (beg == std::string::npos) ? 0_uz : beg + 1_uz;
+        ++it;
+        trimFrom = std::to_address(it) - std::to_address(v.begin());
+    }
 
-    while (beg < end && std::isspace(str[beg]))
-        ++beg;
-    while (end > beg && std::isspace(str[end - 1_uz]))
-        --end;
+    if (trimFrom < str.size() && trimFrom > 0_z) // Trimming a tiny string to `...` is worthless.
+    {
+        std::string ret(str.substr(0, sz(trimFrom)));
+        ret.append("...");
+        return ret;
+    }
 
-    return std::string(str.substr(beg, end - beg));
+    return std::string(str);
 }
 
 [[nodiscard]] inline bool setVecStartsWith(const std::vector<std::set<std::string_view>>& setVec, const std::vector<std::string>& with)

@@ -23,6 +23,12 @@ add_subdirectory(miniaudio EXCLUDE_FROM_ALL)
 set(BUILD_BINDINGS OFF CACHE INTERNAL "" FORCE)
 set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(taglib EXCLUDE_FROM_ALL)
+add_library(taglib INTERFACE)
+target_include_directories(taglib INTERFACE
+    taglib taglib/taglib taglib/taglib/toolkit taglib/taglib/mpeg/id3v2 taglib/taglib/flac
+    ${CMAKE_BINARY_DIR}/tag/include
+)
+target_link_libraries(taglib INTERFACE tag)
 
 file(GLOB_RECURSE TACRAD_HEADERS src/*.h)
 file(GLOB_RECURSE TACRAD_SRCS src/*.cpp)
@@ -67,7 +73,7 @@ target_precompile_headers(tacrad PRIVATE
 target_link_libraries(tacrad PRIVATE
     sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys.BuildSupport.stdc++inc
     sys sys.Text
-    screen dom component miniaudio tag
+    screen dom component miniaudio taglib
 )
 
 target_lint_clang_tidy(tacrad "-header-filter=src/.*" ${TACRAD_HEADERS})

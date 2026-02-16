@@ -36,16 +36,16 @@ int main()
 
         std::shared_ptr<TabContainerImpl> tabContainer = std::static_pointer_cast<TabContainerImpl>(TabContainer({ ui, console }));
         ui::Component tabSelector = TabSelect(tabContainer);
-        ui::Component terminal = Terminal(ui->statusBar());
+        const ui::Component terminal = Terminal(ui->statusBar());
 
         ui::Component rootContainer = ui::Container::Vertical({
             std::move(tabSelector) | hpad,
             std::move(tabContainer) | hpad | ui::yflex,
-            std::move(terminal) | hpad,
+            terminal | hpad,
         });
 
-        const ui::Component uiRoot = ui::Renderer(rootContainer, [&]() -> ui::Element { return rootContainer->Render() | bordered; }) | TerminalSpaceToFocusHandler(terminal) |
-            TerminalQuickActionHandler(terminal) | ClipboardHandler();
+        const ui::Component uiRoot = ui::Renderer(rootContainer, [&rootContainer]() -> ui::Element { return rootContainer->Render() | bordered; }) |
+            TerminalSpaceToFocusHandler(terminal) | TerminalQuickActionHandler(terminal) | ClipboardHandler();
 
         screen.Loop(uiRoot);
 

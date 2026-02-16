@@ -16,9 +16,9 @@ class TabContainerImpl : public ui::ComponentBase
 public:
     i32 tabSelected = 0_i32; // NOLINT(misc-non-private-member-variables-in-classes)
 private:
-    const ui::Component containerComp;
+    const ui::Component tabComp;
 public:
-    explicit TabContainerImpl(ui::Components components) : containerComp(ui::Container::Tab(std::move(components), &*this->tabSelected)) { this->Add(this->containerComp); }
+    explicit TabContainerImpl(ui::Components components) : tabComp(ui::Container::Tab(std::move(components), &*this->tabSelected)) { this->Add(this->tabComp); }
 
     TabContainerImpl(const TabContainerImpl&) = delete;
     TabContainerImpl(TabContainerImpl&&) = delete;

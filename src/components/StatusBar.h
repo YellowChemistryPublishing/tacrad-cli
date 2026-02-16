@@ -101,27 +101,25 @@ class StatusBarImpl : public ui::ComponentBase
     ui::Component playPauseButton = ui::Button("Play",
                                                []
     {
-        if (!MusicPlayer::loaded())
+        if (MusicPlayer::playing())
         {
-            if (!MusicPlayer::play())
-                CommandInvocation::println("[log.error] Failed to play track.");
+            if (!MusicPlayer::pause())
+                CommandInvocation::println("[log.error] Failed to pause track.");
             return;
         }
 
-        if (!MusicPlayer::playing())
+        if (MusicPlayer::loaded())
         {
             if (!MusicPlayer::resume())
                 CommandInvocation::println("[log.error] Failed to resume track.");
             return;
         }
 
-        if (!MusicPlayer::pause())
-            CommandInvocation::println("[log.error] Failed to pause track.");
+        if (!MusicPlayer::play() || !MusicPlayer::resume())
+            CommandInvocation::println("[log.error] Failed to play track.");
     },
                                                ui::ButtonOption { .transform = [this](const ui::EntryState& state) -> ui::Element
-    {
-        return this->postProcessButton(MusicPlayer::playing() && MusicPlayer::loaded() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state);
-    },
+    { return this->postProcessButton(MusicPlayer::playing() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state); },
                                                                   .animated_colors {} });
     ui::Component stopButton = ui::Button("Stop", [] { CommandInvocation::stop({ "[invoked by button press]" }); },
                                           ui::ButtonOption { .transform = [this](const ui::EntryState& state) -> ui::Element

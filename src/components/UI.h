@@ -15,6 +15,7 @@
 #include <Style.h>
 #include <components/Playlist.h>
 #include <components/StatusBar.h>
+#include <components/TagSelector.h>
 
 namespace ui = ftxui;
 
@@ -23,18 +24,21 @@ class UIImpl : public ui::ComponentBase
     i32 leftSize = 20_i32;  // NOLINT(readability-magic-numbers)
     i32 rightSize = 32_i32; // NOLINT(readability-magic-numbers)
 
+    std::shared_ptr<TagSelectorImpl> tagListComp = std::static_pointer_cast<TagSelectorImpl>(TagSelector());
+    ui::Component playlistComp = Playlist(tagListComp);
+    ui::Component trackInfoComp = ui::Renderer([] { return ui::text("details here"); });
+
     std::shared_ptr<StatusBarImpl> statBarComp = std::static_pointer_cast<StatusBarImpl>(StatusBar());
-    ui::Component containerComp = ui::Container::Vertical({ ui::ResizableSplit({ .main = ui::Renderer([] { return ui::text("details here"); }),
-                                                                                 .back = ui::ResizableSplit({ .main = ui::Renderer([] { return ui::text("> all") | ui::bold; }),
-                                                                                                              .back = Playlist(),
-                                                                                                              .direction = ui::Direction::Left,
-                                                                                                              .main_size = &*this->leftSize,
-                                                                                                              .separator_func = psep }),
-                                                                                 .direction = ui::Direction::Right,
-                                                                                 .main_size = &*this->rightSize,
-                                                                                 .separator_func = psep }) |
-                                                                ui::yflex,
-                                                            ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
+
+    ui::Component containerComp = ui::Container::Vertical(
+        { ui::ResizableSplit(
+              { .main = trackInfoComp,
+                .back = ui::ResizableSplit({ .main = tagListComp, .back = playlistComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep }),
+                .direction = ui::Direction::Right,
+                .main_size = &*this->rightSize,
+                .separator_func = psep }) |
+              ui::yflex,
+          ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
     explicit UIImpl() { this->Add(this->containerComp); }
 

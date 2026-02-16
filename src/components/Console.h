@@ -9,7 +9,6 @@
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
 #include <ftxui/util/ref.hpp>
-#include <memory>
 #include <span>
 #include <string>
 #include <utility>
@@ -17,6 +16,7 @@
 
 #include <module/sys>
 
+#include <Config.h>
 #include <Exec.inl>
 #include <Style.h>
 #include <Utility.h>
@@ -26,8 +26,8 @@ namespace ui = ftxui;
 class ConsoleImpl : public ui::ComponentBase
 {
     std::vector<std::string> lastLines;
-    sz lastLinesSizeOld = 0_uz;
-    i32 lastLineWidth = 1_i32;
+    sz linesSize = 0_uz;
+    i32 lineWidth = 1_i32;
     i32 selected = 0_i32;
 
     sz lastHistorySize = 0_uz;
@@ -36,15 +36,15 @@ class ConsoleImpl : public ui::ComponentBase
     void renderLastLines(const std::vector<CommandInvocation::Entry>& history)
     {
         i32 maxLineWidth = std::max(i32(this->bounds.x_max) - i32(this->bounds.x_min), i32::highest());
-        if (this->lastHistorySize > history.size() || this->lastLineWidth != maxLineWidth)
+        if (this->lastHistorySize > history.size() || this->lineWidth != maxLineWidth)
         {
             this->containerComp->DetachAllChildren();
             this->lastLines.clear();
             this->lastHistorySize = 0_uz;
-            this->lastLineWidth = maxLineWidth;
+            this->lineWidth = maxLineWidth;
         }
 
-        this->lastLinesSizeOld = this->lastLines.size();
+        this->linesSize = this->lastLines.size();
         for (const auto& entry : std::span(history.begin() + *ssz(this->lastHistorySize), history.end()))
         {
             const auto process = [&](const std::string& text)
@@ -63,9 +63,8 @@ class ConsoleImpl : public ui::ComponentBase
     {
         const bool follow = (this->selected >= i32(this->containerComp->ChildCount()) - 1_i32) || (this->containerComp->ChildCount() == 0_uz);
 
-        for (sz i = this->lastLinesSizeOld; i < this->lastLines.size(); i++)
-            this->containerComp->Add(this->createRow(this->lastLines[i]));
-
+        for (sz i = this->linesSize; i < this->lastLines.size(); i++)
+            this->containerComp->Add(this->createEntry(this->lastLines[i]));
         this->lastHistorySize = history.size();
 
         if (follow && !this->lastLines.empty())
@@ -80,7 +79,7 @@ class ConsoleImpl : public ui::ComponentBase
         }
     }
 
-    [[nodiscard]] ui::Element postProcessRow(const ui::EntryState& state)
+    [[nodiscard]] ui::Element postProcessEntry(const ui::EntryState& state)
     {
         ui::Element ret = ui::text(state.label);
         if (state.index == this->selected) // Circumvent native behaviour of unselecting when console not focused.
@@ -91,10 +90,10 @@ class ConsoleImpl : public ui::ComponentBase
             ret |= ui::dim;
         return ret;
     }
-    [[nodiscard]] ui::Component createRow(std::string str)
+    [[nodiscard]] ui::Component createEntry(std::string str)
     {
         return ui::MenuEntry(std::move(str),
-                             ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessRow(state); },
+                             ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); },
                                                    .animated_colors = ui::AnimatedColorsOption() });
     }
 
@@ -102,7 +101,7 @@ class ConsoleImpl : public ui::ComponentBase
     ui::Component displayComp = ui::Renderer(this->containerComp, [this]() -> ui::Element
     {
         this->syncIfNeeded(CommandInvocation::rawHistory());
-        return (this->lastLines.empty() ? ui::text("<empty>") | ui::center : this->containerComp->Render()) | vscroll(this->bounds);
+        return (this->lastLines.empty() ? ui::text(Config::BlankText) | ui::center : this->containerComp->Render()) | vscroll(this->bounds);
     });
 public:
     explicit ConsoleImpl() { this->Add(this->displayComp); }

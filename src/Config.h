@@ -15,6 +15,8 @@ struct Config
     static constexpr std::string_view ApplicationName = "♪♫ tacrad-cli";
     static constexpr std::string_view VersionIdentifier = "v0.2.0-alpha";
 
+    static constexpr std::string_view BlankText = "Nothing to see here!";
+
     static constexpr char QuickActionKey = ':';
     static constexpr std::chrono::milliseconds QuickActionDelay = std::chrono::milliseconds(1000);
     static constexpr std::chrono::milliseconds StatusBarMessageDelay = std::chrono::milliseconds(3200);

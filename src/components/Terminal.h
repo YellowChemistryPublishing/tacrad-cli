@@ -155,9 +155,10 @@ public:
 /// @brief Create a terminal component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::weak_ptr<StatusBarImpl> statusBar) { return ui::Make<TerminalImpl>(std::move(statusBar)); }
 
-inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalSpaceToFocusHandler(const ui::Component& terminal)
+// NOLINTNEXTLINE(readability-identifier-naming)
+inline ui::ComponentDecorator TerminalSpaceToFocusHandler(const ui::Component& terminal)
 {
-    return ui::CatchEvent([&](const ui::Event& event)
+    return ui::CatchEvent([terminal](const ui::Event& event)
     {
         if (!terminal->Focused() && event == ui::Event::Character(' '))
         {
@@ -169,9 +170,10 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Termin
     });
 }
 
-inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalQuickActionHandler(const ui::Component& terminal)
+// NOLINTNEXTLINE(readability-identifier-naming)
+inline ui::ComponentDecorator TerminalQuickActionHandler(const ui::Component& terminal)
 {
-    return ui::CatchEvent([&](const ui::Event& event)
+    return ui::CatchEvent([terminal](const ui::Event& event)
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
             terminal->TakeFocus(); // Focus terminal, when user types quick action key.

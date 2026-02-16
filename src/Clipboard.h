@@ -42,7 +42,7 @@ inline void setClipboardWin32(std::string_view str)
 {
     if (!OpenClipboard(nullptr))
         return;
-    const sys::destructor _ = [&] noexcept { CloseClipboard(); };
+    const sys::destructor _ = [] noexcept { CloseClipboard(); };
 
     if (!EmptyClipboard())
         return;

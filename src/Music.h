@@ -1,6 +1,8 @@
 #pragma once
 
 #include <CompilerWarnings.h>
+#include <Metadata.h>
+#include <StringEx.h>
 _push_nowarn_c_cast();
 #include <algorithm>
 #include <atomic>
@@ -32,15 +34,10 @@ _pop_nowarn_c_cast();
 
 #include <Debug.h>
 #include <Exec.inl>
+#include <NativeString.h>
 #include <Screen.h>
 
 namespace ui = ftxui;
-
-#if _libcxxext_os_windows
-using native_string = sys::wstr; // NOLINT(readability-identifier-naming)
-#else
-using native_string = sys::cstr; // NOLINT(readability-identifier-naming)
-#endif
 
 class MusicPlayer
 {
@@ -90,7 +87,7 @@ class MusicPlayer
         return cctor;
     };
 
-    static inline std::atomic<bool> isPlaying = true;
+    static inline std::atomic<bool> isPlaying = false;
     static inline std::atomic<bool> shouldAutoplay = true;
 
     struct Audio
@@ -110,10 +107,13 @@ public:
         sys::str name;
         std::filesystem::path file;
 
+        std::string artists = "unknown";
+
         friend bool operator==(const FoundMusic&, const FoundMusic&) = default;
+        friend auto operator<=>(const FoundMusic&, const FoundMusic&) = default;
     };
 private:
-    static inline std::vector<FoundMusic> playlist;
+    static inline std::map<std::u8string, std::vector<FoundMusic>> playlists;
 public:
     MusicPlayer() = delete;
 
@@ -133,8 +133,8 @@ public:
     static std::string formatTime(float seconds) { return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); } // NOLINT(readability-magic-numbers)
 
     /// @brief Checks if there is music loaded.
+    /// @note Thread-safe.
     [[nodiscard]] static bool loaded() { return MusicPlayer::hasAudio.load(); }
-
     /// @brief Checks if music is currently playing.
     /// @note Thread-safe.
     [[nodiscard]] static bool playing() { return MusicPlayer::isPlaying.load(); }
@@ -150,7 +150,7 @@ public:
         namespace fs = std::filesystem;
 
         std::error_code ec; // NOLINT(misc-const-correctness) TODO(halloimdragon): Use this everywhere.
-        const sys::str compare = sys::str(name).to_lower();
+        const sys::str compare = sys::str(name).fold();
 
         if (!fs::exists("music/", ec))
             return nullptr;
@@ -160,7 +160,7 @@ public:
             return nullptr;
         }
 
-        const auto tryFindWithCompare = [&](auto&& pred) -> sys::result<FoundMusic>
+        const auto tryFindWithCompare = [&ec](auto&& pred) -> sys::result<FoundMusic>
         {
             for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
             {
@@ -179,40 +179,73 @@ public:
             return nullptr;
         };
 
-        sys::result<FoundMusic> res = tryFindWithCompare([&](std::u32string_view trackName) { return sys::str(trackName).to_lower() == compare; });
+        sys::result<FoundMusic> res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold() == compare; });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&](std::u32string_view trackName) { return sys::str(trackName).to_lower().starts_with(compare); });
+        res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&](std::u32string_view trackName) { return sys::str(trackName).to_lower().contains(compare); });
+        res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold().contains(compare); });
         _retif(res.move(), res);
 
         return nullptr;
     }
 
-    static inline i32 currentTrack = i32::sentinel();
-    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlist; }
+    static inline sys::str playlistTag = u8"";
+    static inline i32 currentTrack = 0_i32;
+    [[nodiscard]] static const std::vector<FoundMusic>& playlistWithTag(const std::u8string_view tag)
+    {
+        static const std::vector<FoundMusic> notFound;
+        _retif(notFound, tag.empty());
 
-    static bool generateShuffledPlaylist()
+        if (auto it = MusicPlayer::playlists.find(std::u8string(tag)); it != MusicPlayer::playlists.end())
+            return it->second;
+
+        return notFound;
+    }
+    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::playlistTag); }
+    [[nodiscard]] static const std::map<std::u8string, std::vector<FoundMusic>>& allPlaylists() { return MusicPlayer::playlists; }
+
+    static bool searchForTracks()
     {
         namespace fs = std::filesystem;
+
         std::error_code ec;
+        MusicPlayer::playlists.clear();
 
-        MusicPlayer::playlist.clear();
         for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
+        {
             if (dir.is_regular_file(ec))
-                MusicPlayer::playlist.emplace_back(FoundMusic { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() });
+            {
+                std::vector<sys::str> tags { u8"all", u8"uncategorized" };
+                auto tagsRes = TrackMetadata::readTags(dir.path());
+                if (tagsRes)
+                    tags.append_range(tagsRes.move());
 
-        if (ec)
-            CommandInvocation::println("[log.warn] Couldn't fully iterate through music directory, got error code {}.", ec.value());
+                FoundMusic track { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
+                for (const sys::str& tag : tags)
+                    MusicPlayer::playlists[std::u8string(tag)].emplace_back(track);
+            }
+            if (ec)
+            {
+                CommandInvocation::println("[log.warn] Couldn't fully iterate through music directory, got error code {}.", ec.value());
+                ec.clear();
+            }
+        }
 
-        if (MusicPlayer::playlist.empty())
+        if (MusicPlayer::playlists.empty())
         {
             CommandInvocation::println("[log.warn] Couldn't find any tracks to play! (Did you add any under `music/`?)");
             return false;
         }
 
-        std::shuffle(MusicPlayer::playlist.begin(), MusicPlayer::playlist.end(), MusicPlayer::randEngine);
+        for (auto& [_, playlist] : MusicPlayer::playlists)
+            std::ranges::sort(playlist);
+
         return true;
+    }
+    static void shuffleCurrentPlaylist()
+    {
+        std::vector<FoundMusic>& playlist = MusicPlayer::playlists[std::u8string(MusicPlayer::playlistTag)];
+        std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
     }
 
     [[nodiscard]] static bool resume()
@@ -327,9 +360,10 @@ public:
                     {
                         CommandInvocation::println("[log.error] Failed to play next track.");
                         MusicPlayer::isPlaying.store(false);
+                        return;
                     }
 
-                    MusicPlayer::isPlaying.store(MusicPlayer::autoplay());
+                    MusicPlayer::isPlaying.store(true);
                 });
             else
                 Screen().Post([] { MusicPlayer::isPlaying.store(false); });
@@ -356,8 +390,9 @@ public:
         _retif(false, !foundRes);
 
         const FoundMusic found = foundRes.move();
-        const sz foundIndex(std::distance(MusicPlayer::playlist.begin(), std::ranges::find(MusicPlayer::playlist, found)));
-        MusicPlayer::currentTrack = foundIndex < MusicPlayer::playlist.size() ? i32(foundIndex) : i32::sentinel();
+        const std::vector<FoundMusic>& playlist = MusicPlayer::currentPlaylist();
+        const sz foundIndex(std::distance(playlist.begin(), std::ranges::find(playlist, found)));
+        MusicPlayer::currentTrack = foundIndex < playlist.size() ? i32(foundIndex) : i32::sentinel();
         return MusicPlayer::startMusic(found.name, found.file);
     }
     [[nodiscard]] static bool stopMusic()
@@ -370,7 +405,8 @@ public:
 
         ma_sound_uninit(&aud.sound);
         MusicPlayer::audio = std::nullopt;
-        MusicPlayer::hasAudio = false;
+        MusicPlayer::hasAudio.store(false);
+        MusicPlayer::isPlaying.store(false);
 
         return true;
     }
@@ -379,24 +415,29 @@ public:
     {
         _retif(false, !MusicPlayer::stopMusic());
 
-        if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
+        const std::vector<FoundMusic>& playlist = MusicPlayer::currentPlaylist();
+        if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= playlist.size())
         {
             MusicPlayer::currentTrack = 0_i32;
-            _retif(false, MusicPlayer::currentTrack >= MusicPlayer::playlist.size() || !MusicPlayer::generateShuffledPlaylist());
+            _retif(false, playlist.empty());
+
+            MusicPlayer::shuffleCurrentPlaylist();
         }
 
         Screen().PostEvent(ui::Event::Custom);
 
-        return MusicPlayer::startMusic(MusicPlayer::playlist[sz(MusicPlayer::currentTrack)].name, MusicPlayer::playlist[sz(MusicPlayer::currentTrack)].file);
+        return MusicPlayer::startMusic(playlist[sz(MusicPlayer::currentTrack)].name, playlist[sz(MusicPlayer::currentTrack)].file);
     }
     [[nodiscard]] static bool next()
     {
+        bool wasPlaying = MusicPlayer::playing();
+
         if (MusicPlayer::loaded())
         {
             _retif(false, !MusicPlayer::stopMusic());
             ++MusicPlayer::currentTrack;
         }
 
-        return MusicPlayer::play();
+        return MusicPlayer::play() && (!wasPlaying || MusicPlayer::resume());
     }
 };

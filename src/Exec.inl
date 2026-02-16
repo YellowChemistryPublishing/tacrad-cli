@@ -120,9 +120,9 @@ public:
         if (cmd.empty())
             return false;
 
-        return std::ranges::any_of(CommandInvocation::validCommands, [&](const auto& elem) -> bool
+        return std::ranges::any_of(CommandInvocation::validCommands, [&cmd](const auto& v) -> bool
         {
-            const auto& [query, func] = elem;
+            const auto& [query, func] = v;
             if (cmd.size() < query.startsWith.size() || (query.exactCount && query.startsWith.size() != cmd.size()) || !setVecStartsWith(query.startsWith, cmd))
                 return false;
 

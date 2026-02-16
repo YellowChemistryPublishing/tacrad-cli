@@ -24,7 +24,20 @@ inline ui::Component hborder()
     return ui::Renderer([] { return ui::separatorStyled(UserSettings::border); });
 }
 
+/// @brief Vertical scrollable region.
+/// @param bounds Bounds to reflect region dimensions to.
+/// @attention Lifetime assumptions!
+/// ```cpp
+/// ... obj;
+/// ui::Box bounds;
+///
+/// ... decorated = obj | vscroll(bounds);
+///
+/// decorated.~...();
+/// obj.~...();
+/// bounds.~Box();
+/// ```
 inline ui::ElementDecorator vscroll(ui::Box& bounds)
 {
-    return [&](ui::Element elem) { return std::move(elem) | ui::vscroll_indicator | ui::yframe | ui::reflect(bounds); };
+    return [&bounds](ui::Element elem) { return std::move(elem) | ui::vscroll_indicator | ui::yframe | ui::reflect(bounds); };
 }
