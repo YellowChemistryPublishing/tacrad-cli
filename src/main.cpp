@@ -8,9 +8,9 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <memory>
+#include <utility>
 
 #include <Clipboard.h>
-#include <Config.h>
 #include <Debug.h>
 #include <Exec.h> // NOLINT(misc-include-cleaner)
 #include <Screen.h>
@@ -36,17 +36,16 @@ int main()
 
         std::shared_ptr<TabContainerImpl> tabContainer = std::static_pointer_cast<TabContainerImpl>(TabContainer({ ui, console }));
         ui::Component tabSelector = TabSelect(tabContainer);
-
         ui::Component terminal = Terminal(ui->statusBar());
 
         ui::Component rootContainer = ui::Container::Vertical({
-            ui::Renderer(tabSelector, [&]() -> ui::Element { return hpad(tabSelector->Render()); }),
-            ui::Renderer(tabContainer, [&]() -> ui::Element { return hpad(tabContainer->Render()) | ui::flex; }),
-            ui::Renderer(terminal, [&]() -> ui::Element { return hpad(terminal->Render()); }),
+            std::move(tabSelector) | hpad,
+            std::move(tabContainer) | hpad | ui::yflex,
+            std::move(terminal) | hpad,
         });
 
-        const ui::Component uiRoot = ui::Renderer(rootContainer, [&]() -> ui::Element { return rootContainer->Render() | ui::borderStyled(UserSettings::border); }) |
-            TerminalSpaceToFocusHandler(terminal) | TerminalQuickActionHandler(terminal) | ClipboardHandler();
+        const ui::Component uiRoot = ui::Renderer(rootContainer, [&]() -> ui::Element { return rootContainer->Render() | bordered; }) | TerminalSpaceToFocusHandler(terminal) |
+            TerminalQuickActionHandler(terminal) | ClipboardHandler();
 
         screen.Loop(uiRoot);
 

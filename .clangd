@@ -15,5 +15,9 @@ CompileFlags:
         - -fconcepts-diagnostics-depth=4
     CompilationDatabase: build
 
+Style:
+    AngledHeaders:
+        - ".*"
+
 Index:
     StandardLibrary: true

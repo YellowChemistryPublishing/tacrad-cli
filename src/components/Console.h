@@ -18,6 +18,7 @@
 #include <module/sys>
 
 #include <Exec.inl>
+#include <Style.h>
 #include <Utility.h>
 
 namespace ui = ftxui;
@@ -83,7 +84,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
     {
         ui::Element ret = ui::text(state.label);
         if (state.index == this->selected) // Circumvent native behaviour of unselecting when console not focused.
-            ret = ret | ui::bold | ui::focus;
+            ret = std::move(ret) | ui::bold | ui::focus;
         if (state.active)
             ret |= ui::underlined;
         if (!state.active && state.index != this->selected)
@@ -101,7 +102,7 @@ class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_thi
     ui::Component displayComp = ui::Renderer(this->containerComp, [this]() -> ui::Element
     {
         this->syncIfNeeded(CommandInvocation::rawHistory());
-        return (this->lastLines.empty() ? ui::text("<empty>") | ui::center : this->containerComp->Render()) | ui::vscroll_indicator | ui::yframe | ui::reflect(this->bounds);
+        return (this->lastLines.empty() ? ui::text("<empty>") | ui::center : this->containerComp->Render()) | vscroll(this->bounds);
     });
 public:
     explicit ConsoleImpl() { this->Add(this->displayComp); }

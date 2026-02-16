@@ -9,17 +9,18 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
-#include <memory>
+#include <utility>
 #include <vector>
 
 #include <module/sys>
 #include <module/sys.Text>
 
 #include <Music.h>
+#include <Style.h>
 
 namespace ui = ftxui;
 
-class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_this<PlaylistImpl>
+class PlaylistImpl : public ui::ComponentBase
 {
     std::vector<MusicPlayer::FoundMusic> renderedPlaylist;
     std::vector<sys::str> trackNames;
@@ -30,9 +31,9 @@ class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_th
         ui::Element ret = ui::text(state.label);
 
         if (state.index == MusicPlayer::currentTrack) // Circumvent native behaviour of unselecting when playlist not focused.
-            ret = ret | ui::inverted;
+            ret |= ui::inverted;
         else if (state.index == this->selected)
-            ret = ret | ui::bold | ui::focus;
+            ret = std::move(ret) | ui::bold | ui::focus;
 
         if (state.active)
             ret |= ui::underlined;
@@ -46,7 +47,7 @@ class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_th
                 return "*";
             return " ";
         }()),
-                          ui::separatorEmpty(), ret });
+                          ui::separatorEmpty(), std::move(ret) });
     }
     void onEntryEnter()
     {
@@ -86,7 +87,7 @@ class PlaylistImpl : public ui::ComponentBase, public std::enable_shared_from_th
                                              [this]() -> ui::Element
     {
         this->syncIfNeeded();
-        return this->containerComp->Render() | ui::vscroll_indicator | ui::yframe | ui::yflex | ui::reflect(this->bounds);
+        return this->containerComp->Render() | vscroll(this->bounds);
     }) |
         ui::CatchEvent([this](const ui::Event& event) -> bool
     {

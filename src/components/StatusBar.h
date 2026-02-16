@@ -32,6 +32,7 @@
 #include <Exec.inl>
 #include <Music.h>
 #include <Screen.h>
+#include <Style.h>
 
 namespace ui = ftxui;
 
@@ -163,9 +164,7 @@ class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_t
     });
 
     ui::CapturedMouse capturedMouse;
-    ui::Component containerComp =
-        ui::Container::Horizontal({ this->playPauseButton, ui::Renderer([] { return ui::separatorEmpty(); }), this->stopButton, ui::Renderer([] { return ui::separatorEmpty(); }),
-                                    this->nextButton, ui::Renderer([] { return ui::separatorEmpty(); }), this->progressSliderComp }) |
+    ui::Component containerComp = ui::Container::Horizontal({ this->playPauseButton, hspace(), this->stopButton, hspace(), this->nextButton, hspace(), this->progressSliderComp }) |
         ui::CatchEvent([this](ui::Event event)
     {
         if (!event.is_mouse() || !MusicPlayer::loaded())

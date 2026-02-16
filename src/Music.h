@@ -382,7 +382,7 @@ public:
         if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
         {
             MusicPlayer::currentTrack = 0_i32;
-            _retif(false, MusicPlayer::currentTrack >= MusicPlayer::playlist.size() && !MusicPlayer::generateShuffledPlaylist());
+            _retif(false, MusicPlayer::currentTrack >= MusicPlayer::playlist.size() || !MusicPlayer::generateShuffledPlaylist());
         }
 
         Screen().PostEvent(ui::Event::Custom);
@@ -394,11 +394,7 @@ public:
         if (MusicPlayer::loaded())
         {
             _retif(false, !MusicPlayer::stopMusic());
-
-            if (MusicPlayer::currentTrack >= MusicPlayer::playlist.size())
-                MusicPlayer::currentTrack = 0_i32;
-            else
-                ++MusicPlayer::currentTrack;
+            ++MusicPlayer::currentTrack;
         }
 
         return MusicPlayer::play();

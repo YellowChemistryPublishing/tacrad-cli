@@ -88,8 +88,8 @@ class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_th
         }
 
         if (state.is_placeholder)
-            state.element = ui::hbox({ std::move(state.element) | ui::flex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |
-                ui::color(UserSettings::FlavorUnemphasizedColor) | ui::flex | (state.hovered || state.focused ? ui::underlined : ui::nothing);
+            state.element = ui::hbox({ std::move(state.element) | ui::xflex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |
+                ui::color(UserSettings::FlavorUnemphasizedColor) | ui::xflex | (state.hovered || state.focused ? ui::underlined : ui::nothing);
         else
             state.element = ui::hbox({ std::move(state.element), ui::filler() });
 
@@ -153,7 +153,7 @@ public:
 };
 
 /// @brief Create a terminal component.
-inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::weak_ptr<StatusBarImpl> statusBar) { return ui::Make<TerminalImpl>(statusBar); }
+inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::weak_ptr<StatusBarImpl> statusBar) { return ui::Make<TerminalImpl>(std::move(statusBar)); }
 
 inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalSpaceToFocusHandler(const ui::Component& terminal)
 {
