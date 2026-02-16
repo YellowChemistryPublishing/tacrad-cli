@@ -34,7 +34,7 @@ namespace ui = ftxui;
 
 /// @brief Terminal input component with blinking cursor.
 /// @note Pass `byptr`.
-class TerminalImpl : public ui::ComponentBase, public std::enable_shared_from_this<TerminalImpl>
+class TerminalImpl : public ui::ComponentBase
 {
     std::string cmd;
 

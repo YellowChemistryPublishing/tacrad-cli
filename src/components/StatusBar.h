@@ -40,7 +40,7 @@ namespace ui = ftxui;
 /// @note
 /// Displays the last command output for `Config::StatusBarMessageDelay`, then reverts to track info.
 /// Pass `byptr`.
-class StatusBarImpl : public ui::ComponentBase, public std::enable_shared_from_this<StatusBarImpl>
+class StatusBarImpl : public ui::ComponentBase
 {
     ui::ScreenInteractive& screen = Screen(); // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
 

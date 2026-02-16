@@ -21,7 +21,7 @@
 
 namespace ui = ftxui;
 
-class TabSelectImpl : public ui::ComponentBase, public std::enable_shared_from_this<TabSelectImpl>
+class TabSelectImpl : public ui::ComponentBase
 {
     const std::vector<std::string> tabValues = {
         "UI",

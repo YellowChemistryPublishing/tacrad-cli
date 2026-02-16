@@ -5,22 +5,20 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>
-#include <memory>
 #include <utility>
 
 #include <module/sys>
 
 namespace ui = ftxui;
 
-class TabContainerImpl : public ui::ComponentBase, public std::enable_shared_from_this<TabContainerImpl>
+class TabContainerImpl : public ui::ComponentBase
 {
 public:
     i32 tabSelected = 0_i32; // NOLINT(misc-non-private-member-variables-in-classes)
 private:
-    const ui::Components components;
-    const ui::Component containerComp = ui::Container::Tab(this->components, &*this->tabSelected);
+    const ui::Component containerComp;
 public:
-    explicit TabContainerImpl(ui::Components components) : components(std::move(components)) { this->Add(this->containerComp); }
+    explicit TabContainerImpl(ui::Components components) : containerComp(ui::Container::Tab(std::move(components), &*this->tabSelected)) { this->Add(this->containerComp); }
 
     TabContainerImpl(const TabContainerImpl&) = delete;
     TabContainerImpl(TabContainerImpl&&) = delete;
@@ -30,4 +28,5 @@ public:
     TabContainerImpl& operator=(TabContainerImpl&&) = delete;
 };
 
-inline ui::Component /* NOLINT(readability-identifier-naming) */ TabContainer(ui::Components components) { return ui::Make<TabContainerImpl>(std::move(components)); }
+// NOLINTNEXTLINE(readability-identifier-naming)
+inline ui::Component TabContainer(ui::Components components) { return ui::Make<TabContainerImpl>(std::move(components)); }

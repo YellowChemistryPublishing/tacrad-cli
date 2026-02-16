@@ -23,7 +23,7 @@
 
 namespace ui = ftxui;
 
-class ConsoleImpl : public ui::ComponentBase, public std::enable_shared_from_this<ConsoleImpl>
+class ConsoleImpl : public ui::ComponentBase
 {
     std::vector<std::string> lastLines;
     sz lastLinesSizeOld = 0_uz;

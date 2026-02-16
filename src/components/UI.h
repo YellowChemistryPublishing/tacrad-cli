@@ -18,25 +18,23 @@
 
 namespace ui = ftxui;
 
-class UIImpl : public ui::ComponentBase, public std::enable_shared_from_this<UIImpl>
+class UIImpl : public ui::ComponentBase
 {
     i32 leftSize = 20_i32;  // NOLINT(readability-magic-numbers)
     i32 rightSize = 32_i32; // NOLINT(readability-magic-numbers)
 
-    ui::Component tagSelectComp = ui::Renderer([] { return ui::text("> all") | ui::bold; });
-    ui::Component playlistComp = Playlist();
-    ui::Component detailsComp = ui::Renderer([] { return ui::text("details here"); });
-
     std::shared_ptr<StatusBarImpl> statBarComp = std::static_pointer_cast<StatusBarImpl>(StatusBar());
-    ui::Component containerComp = ui::Container::Vertical(
-        { ui::ResizableSplit({ .main = detailsComp,
-                               .back = ui::ResizableSplit(
-                                   { .main = tagSelectComp, .back = playlistComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep }),
-                               .direction = ui::Direction::Right,
-                               .main_size = &*this->rightSize,
-                               .separator_func = psep }) |
-              ui::yflex,
-          ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
+    ui::Component containerComp = ui::Container::Vertical({ ui::ResizableSplit({ .main = ui::Renderer([] { return ui::text("details here"); }),
+                                                                                 .back = ui::ResizableSplit({ .main = ui::Renderer([] { return ui::text("> all") | ui::bold; }),
+                                                                                                              .back = Playlist(),
+                                                                                                              .direction = ui::Direction::Left,
+                                                                                                              .main_size = &*this->leftSize,
+                                                                                                              .separator_func = psep }),
+                                                                                 .direction = ui::Direction::Right,
+                                                                                 .main_size = &*this->rightSize,
+                                                                                 .separator_func = psep }) |
+                                                                ui::yflex,
+                                                            ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
     explicit UIImpl() { this->Add(this->containerComp); }
 
