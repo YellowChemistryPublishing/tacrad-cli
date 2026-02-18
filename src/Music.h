@@ -149,9 +149,7 @@ public:
     static sys::result<FoundMusic> musicLookup(std::u8string_view name)
     {
         namespace fs = std::filesystem;
-
         std::error_code ec; // NOLINT(misc-const-correctness) TODO(halloimdragon): Use this everywhere.
-        const sys::str compare = sys::str(name).fold();
 
         if (!fs::exists("music/", ec))
             return nullptr;
@@ -165,11 +163,8 @@ public:
         {
             for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
             {
-                if (dir.is_regular_file(ec))
-                {
-                    if (pred(dir.path().stem().generic_u32string()))
-                        return FoundMusic { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
-                }
+                if (dir.is_regular_file(ec) && pred(dir.path().stem().generic_u32string()))
+                    return FoundMusic { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
                 if (ec)
                 {
                     CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
@@ -180,7 +175,12 @@ public:
             return nullptr;
         };
 
-        sys::result<FoundMusic> res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold() == compare; });
+        sys::str compare = sys::str(name);
+        sys::result<FoundMusic> res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName) == compare; });
+        _retif(res.move(), res);
+
+        compare.fold();
+        res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold() == compare; });
         _retif(res.move(), res);
         res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
         _retif(res.move(), res);
@@ -216,10 +216,12 @@ public:
         {
             if (dir.is_regular_file(ec))
             {
-                std::vector<sys::str> tags { u8"all", u8"uncategorized" };
+                std::vector<sys::str> tags { u8"all" };
                 auto tagsRes = TrackMetadata::readTags(dir.path());
                 if (tagsRes)
                     tags.append_range(tagsRes.move());
+                if (tags.size() == 1uz)
+                    tags.emplace_back(u8"uncategorized");
 
                 FoundMusic track { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
                 for (const sys::str& tag : tags)
@@ -244,45 +246,47 @@ public:
         return true;
     }
 
-    static void rearrangeCurrentPlaylist(auto&& reorder)
+    [[nodiscard]] static bool rearrangeCurrentPlaylist(auto&& reorder, std::u8string tag)
     {
-        std::vector<FoundMusic>& playlist = MusicPlayer::playlists[std::u8string(MusicPlayer::playlistTag)];
-        const FoundMusic toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : FoundMusic {};
+        auto it = MusicPlayer::playlists.find(tag);
+        _retif(false, it == MusicPlayer::playlists.end());
 
-        reorder(playlist);
+        std::vector<FoundMusic>& playlist = it->second;
+        const MusicPlayer::FoundMusic toFind =
+            MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : MusicPlayer::FoundMusic {};
 
-        for (sz i = 0_uz; i < playlist.size(); i++)
-        {
-            if (playlist[i] == toFind)
-            {
-                MusicPlayer::currentTrack = i32(i);
-                break;
-            }
-        }
+        reorder(playlist, std::move(tag));
+
+        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; });
+        _retif(true, foundIt == playlist.end());
+
+        MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
+        return true;
     }
-    static void shuffleCurrentPlaylist()
+    [[nodiscard]] static bool shufflePlaylist(std::u8string tag)
     {
-        MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist)
+        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, std::u8string tag)
         {
             std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
-            MusicPlayer::lastPlaylistReorderWasReshuffle.insert(std::u8string(MusicPlayer::playlistTag));
-        });
+            if (MusicPlayer::playlists.contains(tag))
+                MusicPlayer::lastPlaylistReorderWasReshuffle.insert(std::move(tag));
+        }, std::move(tag));
     }
-    static void sortCurrentPlaylistLexicographically()
+    [[nodiscard]] static bool sortPlaylistLexicographically(std::u8string tag)
     {
-        MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist)
+        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, std::u8string tag)
         {
             std::ranges::sort(playlist);
-            MusicPlayer::lastPlaylistReorderWasReshuffle.erase(std::u8string(MusicPlayer::playlistTag));
-        });
+            MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
+        }, std::move(tag));
     }
-    static void sortCurrentPlaylistReverseLexicographically()
+    [[nodiscard]] static bool sortPlaylistReverseLexicographically(std::u8string tag)
     {
-        MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist)
+        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, std::u8string tag)
         {
             std::ranges::sort(playlist, std::greater<>());
-            MusicPlayer::lastPlaylistReorderWasReshuffle.erase(std::u8string(MusicPlayer::playlistTag));
-        });
+            MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
+        }, std::move(tag));
     }
 
     [[nodiscard]] static bool resume()
@@ -333,6 +337,8 @@ public:
 
         return true;
     }
+
+    [[nodiscard]] static float volume() { return ma_engine_get_volume(&MusicPlayer::audioEngine()); }
     [[nodiscard]] static bool volume(float linear)
     {
         if (ma_result res = ma_engine_set_volume(&MusicPlayer::audioEngine(), linear); res != MA_SUCCESS)
@@ -458,8 +464,9 @@ public:
             MusicPlayer::currentTrack = 0_i32;
             _retif(false, playlist.empty());
 
-            if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(std::u8string(MusicPlayer::playlistTag)))
-                MusicPlayer::shuffleCurrentPlaylist();
+            std::u8string tag(MusicPlayer::playlistTag);
+            if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(tag) && !MusicPlayer::shufflePlaylist(std::move(tag)))
+                CommandInvocation::println("[log.warn] Couldn't to re-shuffle playlist! (Was at end of shuffled playlist.)");
         }
 
         Screen().PostEvent(ui::Event::Custom);
@@ -468,7 +475,7 @@ public:
     }
     [[nodiscard]] static bool next()
     {
-        bool wasPlaying = MusicPlayer::playing();
+        const bool wasPlaying = MusicPlayer::playing();
 
         if (MusicPlayer::loaded())
         {

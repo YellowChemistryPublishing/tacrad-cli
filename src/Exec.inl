@@ -61,7 +61,7 @@ public:
     CommandInvocation() = delete;
 
     static void clearHistory() { CommandInvocation::history.clear(); }
-    static void pushCommand(std::string cmd) { CommandInvocation::history.emplace_back(Entry { .cmd = std::move(cmd), .output = "" }); }
+    static void pushCommand(std::string cmd) { CommandInvocation::history.emplace_back(Entry { .cmd = "$ " + std::move(cmd), .output = "" }); }
     template <typename... Args>
     static void println(std::format_string<Args...> fmt, Args&&... args)
     {

@@ -17,6 +17,9 @@ struct Config
 
     static constexpr std::string_view BlankText = "Nothing to see here!";
 
+    static constexpr float LowVolumeThreshold = 0.5f;
+    static constexpr i32 VolumeSliderWidth = 8_i32;
+
     static constexpr char QuickActionKey = ':';
     static constexpr std::chrono::milliseconds QuickActionDelay = std::chrono::milliseconds(1000);
     static constexpr std::chrono::milliseconds StatusBarMessageDelay = std::chrono::milliseconds(3200);
@@ -41,10 +44,18 @@ struct UserSettings
     static constexpr std::string_view StopButtonLabel = "▪";
     static constexpr std::string_view NextButtonLabel = "»";
 
+    static constexpr std::string_view VolumeSliderLabel = "<";
+    static constexpr std::string_view VolumeMuteLabel = "×";
+    static constexpr std::string_view VolumeLowLabel = "~";
+    static constexpr std::string_view VolumeHighLabel = "≈";
+
     static constexpr std::string_view ProgressBarFill = "━";
 
     static constexpr std::string_view ReloadLabel = "●";
     static constexpr std::string_view LexicographicSortLabel = "a↑";
     static constexpr std::string_view ReverseLexicographicSortLabel = "z↓";
     static constexpr std::string_view ShuffleLabel = "↔";
+
+    static constexpr i32 TagSelectPanelInitWidth = 22_i32;
+    static constexpr i32 DetailsPanelInitWidth = 34_i32;
 };

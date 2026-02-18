@@ -30,34 +30,6 @@ class TagSelectorImpl : public ui::ComponentBase
 public:
     sys::str lookingAtTag = MusicPlayer::playlistTag; // NOLINT(misc-non-private-member-variables-in-classes)
 private:
-    ui::Element postProcessEntry(ui::EntryState state)
-    {
-        ui::Element ret = ui::text(truncateStrForDisplay(state.label, this->bounds));
-
-        // Circumvent native behaviour of unselecting when tag selector not focused.
-        if (MusicPlayer::playing() && state.label == _as(std::string_view, sys::cstr(MusicPlayer::playlistTag)))
-            ret |= ui::inverted;
-        if (state.index == this->selected)
-        {
-            ret = std::move(ret) | ui::bold | ui::focus;
-            if (!MusicPlayer::loaded())
-                MusicPlayer::playlistTag = sys::str(state.label);
-        }
-        if (state.active)
-            ret |= ui::underlined;
-
-        return ui::hbox({ ui::text(
-                              [&]
-        {
-            if (state.label == _as(std::string_view, sys::cstr(MusicPlayer::playlistTag)))
-                return ">";
-            if (state.index == this->selected)
-                return "*";
-            return " ";
-        }()),
-                          ui::separatorEmpty(), std::move(ret) });
-    }
-
     void syncIfNeeded()
     {
         const std::map<std::u8string, std::vector<MusicPlayer::FoundMusic>>& freshPlaylists = MusicPlayer::allPlaylists();
@@ -68,9 +40,13 @@ private:
             const auto addTag = [this](std::u8string_view tag)
             {
                 this->tagNames.emplace_back(tag);
-                this->containerComp->Add(ui::MenuEntry(
-                    _as(std::string_view, sys::cstr(tag)),
-                    ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); }, .animated_colors {} }));
+                this->containerComp->Add(ui::MenuEntry(_as(std::string_view, sys::cstr(tag)),
+                                                       ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
+                {
+                    return postProcessDisplayListEntry(state, this->selected, this->bounds,
+                                                       [&state] { return state.label == _as(std::string_view, sys::cstr(MusicPlayer::playlistTag)); });
+                },
+                                                                             .animated_colors {} }));
             };
 
             addTag(u8"all");

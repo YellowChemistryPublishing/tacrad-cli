@@ -25,43 +25,19 @@ namespace ui = ftxui;
 
 class PlaylistImpl : public ui::ComponentBase
 {
-    std::shared_ptr<TagSelectorImpl> tagSelector;
-
+public:
+    std::shared_ptr<TagSelectorImpl> tagSelectorComp;
+private:
     std::vector<MusicPlayer::FoundMusic> renderedPlaylist;
     std::vector<sys::str> trackNames;
-    i32 selected = 0_i32, currentTrack = MusicPlayer::currentTrack;
+public:
+    i32 selected = 0_i32, currentTrack = MusicPlayer::currentTrack; // NOLINT(misc-non-private-member-variables-in-classes)
+private:
     ui::Box bounds;
 
-    ui::Element postProcessEntry(ui::EntryState state)
-    {
-        ui::Element ret = ui::text(truncateStrForDisplay(state.label, this->bounds));
-
-        // Circumvent native behaviour of unselecting when playlist not focused.
-        if (MusicPlayer::playing() && state.index == MusicPlayer::currentTrack && this->tagSelector->lookingAtTag == MusicPlayer::playlistTag)
-            ret |= ui::inverted;
-        if (state.index == this->selected)
-        {
-            ret = std::move(ret) | ui::bold | ui::focus;
-            if (!MusicPlayer::loaded())
-                MusicPlayer::currentTrack = this->selected;
-        }
-        if (state.active)
-            ret |= ui::underlined;
-
-        return ui::hbox({ ui::text(
-                              [&]
-        {
-            if (state.index == MusicPlayer::currentTrack && this->tagSelector->lookingAtTag == MusicPlayer::playlistTag)
-                return ">";
-            if (state.index == this->selected)
-                return "*";
-            return " ";
-        }()),
-                          ui::separatorEmpty(), std::move(ret) });
-    }
     void onEntryEnter()
     {
-        MusicPlayer::playlistTag = this->tagSelector->lookingAtTag;
+        MusicPlayer::playlistTag = this->tagSelectorComp->lookingAtTag;
         MusicPlayer::currentTrack = this->selected;
         if (!MusicPlayer::stopMusic())
             CommandInvocation::println("[log.warn] Failed to stop music.");
@@ -71,7 +47,7 @@ class PlaylistImpl : public ui::ComponentBase
 
     void syncIfNeeded()
     {
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(this->tagSelector->lookingAtTag);
+        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(this->tagSelectorComp->lookingAtTag);
         if (this->renderedPlaylist != playlist)
         {
             this->containerComp->DetachAllChildren();
@@ -79,9 +55,13 @@ class PlaylistImpl : public ui::ComponentBase
             for (const auto& track : playlist)
             {
                 this->trackNames.emplace_back(track.name);
-                this->containerComp->Add(ui::MenuEntry(
-                    _as(std::string_view, sys::cstr(track.name)),
-                    ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); }, .animated_colors {} }));
+                this->containerComp->Add(ui::MenuEntry(_as(std::string_view, sys::cstr(track.name)),
+                                                       ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
+                {
+                    return postProcessDisplayListEntry(state, this->selected, this->bounds,
+                                                       [&] { return state.index == MusicPlayer::currentTrack && this->tagSelectorComp->lookingAtTag == MusicPlayer::playlistTag; });
+                },
+                                                                             .animated_colors {} }));
             }
 
             if (this->selected >= playlist.size())
@@ -115,8 +95,11 @@ class PlaylistImpl : public ui::ComponentBase
         return false;
     });
 public:
-    explicit PlaylistImpl(std::shared_ptr<TagSelectorImpl> tagSelector) : tagSelector(std::move(tagSelector)) { this->Add(this->displayComp); }
+    explicit PlaylistImpl(std::shared_ptr<TagSelectorImpl> tagSelectorComp) : tagSelectorComp(std::move(tagSelectorComp)) { this->Add(this->displayComp); }
 };
 
 /// @brief Create a playlist component.
-inline ui::Component /* NOLINT(readability-identifier-naming) */ Playlist(std::shared_ptr<TagSelectorImpl> tagSelector) { return ui::Make<PlaylistImpl>(std::move(tagSelector)); }
+inline ui::Component /* NOLINT(readability-identifier-naming) */ Playlist(std::shared_ptr<TagSelectorImpl> tagSelectorComp)
+{
+    return ui::Make<PlaylistImpl>(std::move(tagSelectorComp));
+}

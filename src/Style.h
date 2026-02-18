@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <Config.h>
+#include <Music.h>
 
 namespace ui = ftxui;
 
@@ -46,9 +47,34 @@ inline ui::Element postProcessIconButton(ui::Element elem, const ui::EntryState&
 {
     if (state.active)
         elem = std::move(elem) | ui::bold | ui::focus;
+
     if (state.focused)
         elem = std::move(elem) | ui::color(UserSettings::FlavorEmphasizedColor) | ui::underlined;
     else
         elem |= ui::color(UserSettings::FlavorUnemphasizedColor);
+
     return elem;
+}
+inline ui::Element postProcessDisplayListEntry(const ui::EntryState& state, i32 selected, const ui::Box& bounds, auto&& extra_cond = [] { return true; })
+{
+    ui::Element ret = ui::text(truncateStrForDisplay(state.label, bounds));
+
+    // Circumvent native behaviour of unselecting when container not focused.
+    if (MusicPlayer::loaded() && extra_cond())
+        ret |= ui::inverted;
+    if (state.index == selected)
+        ret = std::move(ret) | ui::bold | ui::focus;
+    if (state.active)
+        ret |= ui::underlined;
+
+    return ui::hbox({ ui::text(
+                          [&]
+    {
+        if (extra_cond())
+            return ">";
+        if (state.index == selected)
+            return "*";
+        return " ";
+    }()),
+                      ui::separatorEmpty(), std::move(ret) });
 }

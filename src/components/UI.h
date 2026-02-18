@@ -22,22 +22,23 @@ namespace ui = ftxui;
 
 class UIImpl : public ui::ComponentBase
 {
-    i32 leftSize = 20_i32;  // NOLINT(readability-magic-numbers)
-    i32 rightSize = 32_i32; // NOLINT(readability-magic-numbers)
+    i32 leftSize = UserSettings::TagSelectPanelInitWidth;
+    i32 rightSize = UserSettings::DetailsPanelInitWidth;
 
     std::shared_ptr<TagSelectorImpl> tagListComp = std::static_pointer_cast<TagSelectorImpl>(TagSelector());
-    ui::Component playlistComp = ui::Container::Vertical({ Playlist(tagListComp) | ui::yflex, PlaylistBar() });
+    std::shared_ptr<PlaylistImpl> playlistComp = std::static_pointer_cast<PlaylistImpl>(Playlist(tagListComp));
+    ui::Component playlistPanelComp = ui::Container::Vertical({ playlistComp | ui::yflex, PlaylistBar(playlistComp) });
     ui::Component trackInfoComp = ui::Renderer([] { return ui::text("details here"); });
 
     std::shared_ptr<StatusBarImpl> statBarComp = std::static_pointer_cast<StatusBarImpl>(StatusBar());
 
     ui::Component containerComp = ui::Container::Vertical(
-        { ui::ResizableSplit(
-              { .main = trackInfoComp,
-                .back = ui::ResizableSplit({ .main = tagListComp, .back = playlistComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep }),
-                .direction = ui::Direction::Right,
-                .main_size = &*this->rightSize,
-                .separator_func = psep }) |
+        { ui::ResizableSplit({ .main = trackInfoComp,
+                               .back = ui::ResizableSplit(
+                                   { .main = tagListComp, .back = playlistPanelComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep }),
+                               .direction = ui::Direction::Right,
+                               .main_size = &*this->rightSize,
+                               .separator_func = psep }) |
               ui::yflex,
           ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
