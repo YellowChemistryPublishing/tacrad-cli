@@ -32,7 +32,7 @@ class TagSelectorImpl final : public ui::ComponentBase
     ui::Box bounds;
 public:
     // Currently selected playlist name.
-    sys::str selectedTag = MusicPlayer::playlistTag; // NOLINT(misc-non-private-member-variables-in-classes)
+    sys::str selectedTag = MusicPlayer::currentTag; // NOLINT(misc-non-private-member-variables-in-classes)
 private:
     void syncIfNeeded()
     {
@@ -46,7 +46,7 @@ private:
                                                        ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
                 {
                     return postProcessDisplayListEntry(state, this->selected, this->bounds,
-                                                       [&] { return state.label == _as(std::string_view, sys::cstr(MusicPlayer::playlistTag)); });
+                                                       [&] { return state.label == _as(std::string_view, sys::cstr(MusicPlayer::currentTag)); });
                 },
                                                                              .animated_colors {} }));
             };

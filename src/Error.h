@@ -130,7 +130,7 @@ public:
 
 constexpr Error Error::DirectoryNotFound("Directory not found.");
 
-constexpr Error Error::PlaylistEmpty("Playlist has no tracks.");
+constexpr Error Error::PlaylistEmpty("Playlist has no tracks. Add some!");
 constexpr Error Error::TrackNotLoaded("Track not loaded.");
 constexpr Error Error::TrackNotFound("Track not found.");
 constexpr Error Error::TrackSeekOutOfRange("Seek query out of duration of media.");

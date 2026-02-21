@@ -88,7 +88,7 @@ class StatusBarImpl final : public ui::ComponentBase
     ui::Component playButtonComp = ui::Button("Play",
                                               [this]
     {
-        if (MusicPlayer::playing())
+        if (MusicPlayer::loaded() && MusicPlayer::playing())
         {
             _retif(CmdInv::println(this->consoleComp->history, "[log.error] Failed to pause track. ({})", _as(std::string_view, pauseRes.err())),
                    auto pauseRes = MusicPlayer::pause();
@@ -109,7 +109,7 @@ class StatusBarImpl final : public ui::ComponentBase
             CmdInv::println(this->consoleComp->history, "[log.error] Failed to play track. ({})", _as(std::string_view, playRes.err()));
     },
                                               ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element
-    { return postProcessIconButton(MusicPlayer::playing() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state); },
+    { return postProcessIconButton(MusicPlayer::loaded() && MusicPlayer::playing() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state); },
                                                                  .animated_colors {} });
     ui::Component stopButtonComp =
         ui::Button("Stop", [this] { CmdInv::stop(this->consoleComp->history, { "[invoked by button press]" }); },

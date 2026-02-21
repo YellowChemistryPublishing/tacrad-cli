@@ -70,7 +70,7 @@ inline ui::Element postProcessDisplayListEntry(const ui::EntryState& state, i32 
     ui::Element ret = ui::text(truncateStrForDisplay(state.label, bounds));
 
     // Circumvent native behaviour of unselecting when container not focused.
-    if (MusicPlayer::loaded() && extra_cond())
+    if (MusicPlayer::loaded() && MusicPlayer::playing() && extra_cond())
         ret |= ui::inverted;
     if (state.index == selected)
         ret = std::move(ret) | ui::bold | ui::focus;

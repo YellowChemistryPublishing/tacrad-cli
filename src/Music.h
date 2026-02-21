@@ -35,6 +35,7 @@ _pop_nowarn_c_cast();
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <CmdInv.inl>
 #include <Debug.h>
 #include <Error.h>
 #include <Metadata.h>
@@ -91,7 +92,7 @@ class MusicPlayer final
         return cctor;
     };
 
-    static inline std::atomic<bool> isPlaying = false;
+    static inline std::atomic<bool> isPlaying = true; // First track starts playing!
     static inline std::atomic<bool> shouldAutoplay = true;
 
     struct Audio
@@ -191,7 +192,7 @@ public:
         return res;
     }
 
-    static inline sys::str playlistTag = u8"all";
+    static inline sys::str currentTag = u8"all";
     static inline i32 currentTrack = 0_i32;
     [[nodiscard]] static const std::vector<FoundMusic>& playlistWithTag(const std::u8string_view tag)
     {
@@ -203,7 +204,7 @@ public:
 
         return notFound;
     }
-    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::playlistTag); }
+    [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::currentTag); }
     [[nodiscard]] static const std::map<sys::str, std::vector<FoundMusic>>& allPlaylists() { return MusicPlayer::playlists; }
 
     static std::vector<std::error_code> searchForTracks()
@@ -264,9 +265,9 @@ public:
         return ret;
     }
 
-    /// @brief Rearranges current playlist with reordering function.
-    /// @return Whether the playlist existed to rearrange.
-    [[nodiscard]] static bool rearrangeCurrentPlaylist(auto&& reorder, sys::str tag)
+    /// @brief Reorders current playlist with reordering function.
+    /// @return Whether the playlist existed to reorder.
+    [[nodiscard]] static bool reorderCurrentPlaylist(auto&& reorder, sys::str tag)
     {
         auto it = MusicPlayer::playlists.find(tag);
         _retif(false, it == MusicPlayer::playlists.end());
@@ -285,7 +286,7 @@ public:
     }
     [[nodiscard]] static bool shufflePlaylist(sys::str tag)
     {
-        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
+        return MusicPlayer::reorderCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
         {
             std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
             if (MusicPlayer::playlists.contains(tag))
@@ -294,7 +295,7 @@ public:
     }
     [[nodiscard]] static bool sortPlaylistLexicographically(sys::str tag)
     {
-        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
+        return MusicPlayer::reorderCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
         {
             std::ranges::sort(playlist);
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
@@ -302,7 +303,7 @@ public:
     }
     [[nodiscard]] static bool sortPlaylistReverseLexicographically(sys::str tag)
     {
-        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
+        return MusicPlayer::reorderCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
         {
             std::ranges::sort(playlist, std::greater<>());
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
@@ -363,7 +364,7 @@ public:
         }
 
         Audio& aud = *MusicPlayer::audio;
-        sys::optional_destructor aud_dtor = [] noexcept
+        sys::optional_destructor audDtor = [] noexcept
         {
             MusicPlayer::audio = std::nullopt;
             MusicPlayer::hasAudio = false;
@@ -377,7 +378,7 @@ public:
 #endif
             res != MA_SUCCESS)
             return Error::fromAudioEngineResult(res);
-        sys::optional_destructor sound_dtor = [] noexcept { ma_sound_uninit(&MusicPlayer::audio->sound); };
+        sys::optional_destructor soundDtor = [] noexcept { ma_sound_uninit(&MusicPlayer::audio->sound); };
 
         if (const ma_result res = ma_sound_get_length_in_pcm_frames(&aud.sound, &*aud.frameLen); res != MA_SUCCESS)
             return Error::fromAudioEngineResult(res);
@@ -390,9 +391,9 @@ public:
             if (MusicPlayer::autoplay())
                 Screen().Post([]
                 {
-                    if (!MusicPlayer::next()) [[unlikely]]
+                    if (auto nextRes = MusicPlayer::next(); !nextRes) [[unlikely]]
                     {
-                        // CmdInv::println("[log.error] Failed to play next track.");
+                        debugLog("[log.error] Failed to play next track. ({})", _as(std::string_view, nextRes.err()));
                         MusicPlayer::isPlaying.store(false);
                         return;
                     }
@@ -408,8 +409,8 @@ public:
         if (MusicPlayer::isPlaying.load())
             _retif(resRes.err(), auto resRes = MusicPlayer::resume(); !resRes);
 
-        sound_dtor.release();
-        aud_dtor.release();
+        soundDtor.release();
+        audDtor.release();
         return {};
     }
     [[nodiscard]] static sys::result<void, Error> queryStartMusic(std::u8string_view query)
@@ -417,12 +418,12 @@ public:
         namespace fs = std::filesystem;
 
         _res_movret(const fs::path found, MusicPlayer::musicLookup(query));
-        const std::vector<FoundMusic>& playlist = MusicPlayer::currentPlaylist();
     Again:
-        const sz foundIndex(std::distance(playlist.begin(), std::ranges::find_if(playlist, [&](const FoundMusic& music) { return music.file == found; })));
-        if (MusicPlayer::playlistTag != u8"all" && foundIndex == playlist.size())
+        const std::vector<FoundMusic>& playlist = MusicPlayer::currentPlaylist();
+        sz foundIndex(sz(std::distance(playlist.begin(), std::ranges::find_if(playlist, [&](const FoundMusic& music) { return music.file == found; }))));
+        if (foundIndex == playlist.size() && MusicPlayer::currentTag != u8"all")
         {
-            MusicPlayer::playlistTag = u8"all";
+            MusicPlayer::currentTag = u8"all";
             goto Again;
         }
         MusicPlayer::currentTrack = foundIndex < playlist.size() ? i32(foundIndex) : i32::sentinel();
@@ -439,9 +440,8 @@ public:
         ma_sound_uninit(&aud.sound);
         MusicPlayer::audio = std::nullopt;
         MusicPlayer::hasAudio.store(false);
-        MusicPlayer::isPlaying.store(false);
 
-        if (res != MA_DEVICE_NOT_STARTED)
+        if (res != MA_SUCCESS && res != MA_DEVICE_NOT_STARTED)
             return Error::fromAudioEngineResult(res);
         return {};
     }
@@ -456,7 +456,7 @@ public:
             MusicPlayer::currentTrack = 0_i32;
             _retif(Error::PlaylistEmpty, playlist.empty());
 
-            const sys::str tag(MusicPlayer::playlistTag);
+            const sys::str tag(MusicPlayer::currentTag);
             if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(tag) && !MusicPlayer::shufflePlaylist(tag))
             {
                 MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
@@ -470,7 +470,7 @@ public:
     }
     [[nodiscard]] static sys::result<void, Error> next()
     {
-        const bool wasPlaying = MusicPlayer::playing();
+        sys::optional_destructor playingDtor = [] noexcept { MusicPlayer::isPlaying.store(false); };
 
         if (MusicPlayer::loaded())
         {
@@ -479,9 +479,8 @@ public:
         }
 
         _retif(playRes, auto playRes = MusicPlayer::play(); !playRes);
-        if (!wasPlaying)
-            _retif(resRes, auto resRes = MusicPlayer::resume(); !resRes);
 
+        playingDtor.release();
         return {};
     }
 };
