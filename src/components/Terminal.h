@@ -26,13 +26,15 @@
 #include <module/sys>
 
 #include <CmdInv.h>
+#include <CmdProc.h>
 #include <Config.h>
 #include <Screen.h>
+#include <components/Console.h>
 #include <components/StatusBar.h>
 
 namespace ui = ftxui;
 
-/// @brief Terminal input component with blinking cursor.
+/// @brief Displays command input bar with blinking cursor.
 /// @note Pass `byptr`.
 class TerminalImpl : public ui::ComponentBase
 {
@@ -58,18 +60,17 @@ class TerminalImpl : public ui::ComponentBase
                 this->clearAfter = std::chrono::steady_clock::time_point::max();
             }
 
-            this->screen.Post([this]()
+            Screen().Post([this]()
             {
                 if (!this->cmd.starts_with(Config::QuickActionKey) || this->cmd.size() <= 1uz)
                     return;
 
                 this->cmd = Config::QuickActionKey;
-                this->screen.PostEvent(ui::Event::Custom);
+                Screen().PostEvent(ui::Event::Custom);
             });
         }
     } };
 
-    /// @brief Let the currently typed quick action live until one second from now.
     void resetQuickActionTimeout()
     {
         const std::unique_lock guard(this->clearAfterLock);
@@ -77,7 +78,6 @@ class TerminalImpl : public ui::ComponentBase
         this->clearAfterCv.notify_one();
     }
 
-    /// @brief Post-process an input element.
     static ui::Element postProcessInput(ui::InputState state)
     {
         if (state.focused)
@@ -95,7 +95,6 @@ class TerminalImpl : public ui::ComponentBase
 
         return state.element;
     }
-    /// @brief Handle character input.
     void onInputChange()
     {
         if (!this->cmd.starts_with(Config::QuickActionKey))
@@ -108,19 +107,18 @@ class TerminalImpl : public ui::ComponentBase
             return;
         }
 
-        if (CommandProcessor::quickAction(this->cmd))
+        if (CmdProc::invokeQuickAction(this->consoleComp->history, this->cmd))
             this->cmd.clear();
     }
-    /// @brief Handle enter key press.
     void onInputEnter()
     {
         _retif(, this->cmd.empty());
 
-        CommandProcessor::command(this->cmd, this->statusBar);
+        CmdProc::invoke(this->consoleComp->history, this->cmd, this->statusBar);
         this->cmd.clear();
     }
 
-    ui::ScreenInteractive& screen = Screen();
+    std::shared_ptr<ConsoleImpl> consoleComp;
     std::weak_ptr<StatusBarImpl> statusBar;
 
     ui::Box bounds;
@@ -142,23 +140,22 @@ class TerminalImpl : public ui::ComponentBase
         return false;
     });
 public:
-    explicit TerminalImpl(std::weak_ptr<StatusBarImpl> statusBar) : statusBar(std::move(statusBar)) { this->Add(this->inputComp); }
-
-    TerminalImpl(const TerminalImpl&) = delete;
-    TerminalImpl(TerminalImpl&&) = delete;
-    ~TerminalImpl() override = default;
-
-    TerminalImpl& operator=(const TerminalImpl&) = delete;
-    TerminalImpl& operator=(TerminalImpl&&) = delete;
+    explicit TerminalImpl(std::shared_ptr<ConsoleImpl> consoleComp, std::weak_ptr<StatusBarImpl> statusBar) : consoleComp(std::move(consoleComp)), statusBar(std::move(statusBar))
+    {
+        this->Add(this->inputComp);
+    }
 };
 
-/// @brief Create a terminal component.
-inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::weak_ptr<StatusBarImpl> statusBar) { return ui::Make<TerminalImpl>(std::move(statusBar)); }
-
-// NOLINTNEXTLINE(readability-identifier-naming)
-inline ui::ComponentDecorator TerminalSpaceToFocusHandler(const ui::Component& terminal)
+/// @brief Create a `TerminalImpl` component.
+inline ui::Component /* NOLINT(readability-identifier-naming) */ Terminal(std::shared_ptr<ConsoleImpl> consoleComp, std::weak_ptr<StatusBarImpl> statusBar)
 {
-    return ui::CatchEvent([terminal](const ui::Event& event)
+    return ui::Make<TerminalImpl>(std::move(consoleComp), std::move(statusBar));
+}
+
+/// @brief Event handler for quick-focus on space pressed.
+inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalSpaceToFocusHandler(ui::Component terminal)
+{
+    return ui::CatchEvent([terminal = std::move(terminal)](const ui::Event& event)
     {
         if (!terminal->Focused() && event == ui::Event::Character(' '))
         {
@@ -170,10 +167,10 @@ inline ui::ComponentDecorator TerminalSpaceToFocusHandler(const ui::Component& t
     });
 }
 
-// NOLINTNEXTLINE(readability-identifier-naming)
-inline ui::ComponentDecorator TerminalQuickActionHandler(const ui::Component& terminal)
+/// @brief Event handler for quick-focus on ':' key press.
+inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalQuickActionHandler(ui::Component terminal)
 {
-    return ui::CatchEvent([terminal](const ui::Event& event)
+    return ui::CatchEvent([terminal = std::move(terminal)](const ui::Event& event)
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
             terminal->TakeFocus(); // Focus terminal, when user types quick action key.

@@ -2,6 +2,7 @@
 
 #include <CompilerWarnings.h>
 #include <Metadata.h>
+#include <Music.h>
 #include <StringEx.h>
 _push_nowarn_c_cast();
 #include <algorithm>
@@ -32,8 +33,8 @@ _pop_nowarn_c_cast();
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <CmdInv.inl>
 #include <Debug.h>
-#include <Exec.inl>
 #include <NativeString.h>
 #include <Screen.h>
 
@@ -93,7 +94,6 @@ class MusicPlayer
     struct Audio
     {
         ma_sound sound {}; // _MUST_ be valid.
-        native_string name;
 
         sys::integer<ma_uint64> prevFrame { 0 };
         sys::integer<ma_uint64> frameLen { 0 };
@@ -107,7 +107,8 @@ public:
         sys::str name = u8"";
         std::filesystem::path file {};
 
-        std::string artists = "unknown";
+        std::string artistsDisplay = "unknown";
+        std::string tagsDisplay = "[none]";
 
         friend bool operator==(const FoundMusic&, const FoundMusic&) = default;
         friend auto operator<=>(const FoundMusic&, const FoundMusic&) = default;
@@ -118,20 +119,24 @@ private:
 public:
     MusicPlayer() = delete;
 
-    static float currentTime()
+    static sys::result<float, ma_result> currentTime()
     {
-        _retif(0.0f, !MusicPlayer::audio);
+        _retif(MA_INVALID_OPERATION, !MusicPlayer::audio);
         float ret = 0.0f;
         if (ma_result res = ma_sound_get_cursor_in_seconds(&MusicPlayer::audio->sound, &ret); res != MA_SUCCESS)
-            CommandInvocation::println("[log.error] Failed to get cursor in seconds, with error code {}.", _as(int, res));
+            // CmdInv::println("[log.error] Failed to get cursor in seconds, with error code {}.", _as(int, res));
+            return res;
         return ret;
     }
-    static float totalTime()
+    static sys::result<float, ma_result> totalTime()
     {
-        _retif(0.0f, !MusicPlayer::audio);
+        _retif(MA_INVALID_OPERATION, !MusicPlayer::audio);
         return MusicPlayer::audio->audioLen;
     }
-    static std::string formatTime(float seconds) { return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); } // NOLINT(readability-magic-numbers)
+    _pure_const static std::string formatTime(float seconds)
+    {
+        return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); // NOLINT(readability-magic-numbers)
+    }
 
     /// @brief Checks if there is music loaded.
     /// @note Thread-safe.
@@ -144,53 +149,49 @@ public:
     [[nodiscard]] static bool autoplay() { return MusicPlayer::shouldAutoplay.load(); }
     /// @brief Sets whether music should autoplay.
     /// @note Thread-safe.
-    static void autoplay(bool value) { MusicPlayer::shouldAutoplay.store(value); }
+    static void autoplay(const bool value) { MusicPlayer::shouldAutoplay.store(value); }
 
-    static sys::result<FoundMusic> musicLookup(std::u8string_view name)
+    static sys::result<std::filesystem::path, std::error_code> musicLookup(std::u8string_view name)
     {
         namespace fs = std::filesystem;
         std::error_code ec; // NOLINT(misc-const-correctness) TODO(halloimdragon): Use this everywhere.
 
         if (!fs::exists("music/", ec))
-            return nullptr;
+            return std::make_error_code(std::errc::not_a_directory);
         if (ec)
-        {
-            CommandInvocation::println("[log.error] Failed to check if music directory exists, with error code {}.", ec.value());
-            return nullptr;
-        }
+            // CmdInv::println("[log.error] Failed to check if music directory exists, with error code {}.", ec.value());
+            return ec;
 
-        const auto tryFindWithCompare = [&ec](auto&& pred) -> sys::result<FoundMusic>
+        const auto tryFindWithCompare = [&ec](auto&& pred) -> sys::result<fs::path, std::error_code>
         {
             for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
             {
-                if (dir.is_regular_file(ec) && pred(dir.path().stem().generic_u32string()))
-                    return FoundMusic { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
+                if (dir.is_regular_file(ec) && pred(dir.path().stem().generic_u8string()))
+                    return dir.path();
                 if (ec)
-                {
-                    CommandInvocation::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
-                    return nullptr;
-                }
+                    // CmdInv::println("[log.error] Failed to iterate through music directory, with error code {}.", ec.value());
+                    return ec;
             }
 
-            return nullptr;
+            return std::make_error_code(std::errc::no_such_file_or_directory);
         };
 
         sys::str compare = sys::str(name);
-        sys::result<FoundMusic> res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName) == compare; });
+        sys::result<fs::path, std::error_code> res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName) == compare; });
         _retif(res.move(), res);
 
         compare.fold();
-        res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold() == compare; });
+        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold() == compare; });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
+        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&compare](const std::u32string_view trackName) { return sys::str(trackName).fold().contains(compare); });
+        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().contains(compare); });
         _retif(res.move(), res);
 
-        return nullptr;
+        return res;
     }
 
-    static inline sys::str playlistTag = u8"";
+    static inline sys::str playlistTag = u8"all";
     static inline i32 currentTrack = 0_i32;
     [[nodiscard]] static const std::vector<FoundMusic>& playlistWithTag(const std::u8string_view tag)
     {
@@ -205,45 +206,62 @@ public:
     [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::playlistTag); }
     [[nodiscard]] static const std::map<std::u8string, std::vector<FoundMusic>>& allPlaylists() { return MusicPlayer::playlists; }
 
-    static bool searchForTracks()
+    static std::vector<std::error_code> searchForTracks()
     {
         namespace fs = std::filesystem;
 
         std::error_code ec;
         MusicPlayer::playlists.clear();
 
+        std::vector<std::error_code> ret;
         for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
         {
             if (dir.is_regular_file(ec))
             {
+                TagLib::FileRef f(native_string(dir.path().generic_u8string()).c_str());
+
                 std::vector<sys::str> tags { u8"all" };
-                auto tagsRes = TrackMetadata::readTags(dir.path());
+                auto tagsRes = TrackMetadata::readTrackTags(f);
                 if (tagsRes)
                     tags.append_range(tagsRes.move());
                 if (tags.size() == 1uz)
                     tags.emplace_back(u8"uncategorized");
 
-                FoundMusic track { .name = sys::str(dir.path().stem().generic_u8string()), .file = dir.path() };
+                sys::result<TrackMetadata::TrackArtists> artistsRes = TrackMetadata::readArtists(f);
+                FoundMusic track { .name = sys::str(dir.path().stem().generic_u8string()),
+                                   .file = dir.path(),
+                                   .artistsDisplay = artistsRes ? [&, as = artistsRes.move()]
+                {
+                    sys::str ret= sys::str::join(as.artists, u8"; ");
+                    if (!as.feats.empty())
+                        ret.append(u8" ft. ").append(sys::str::join(as.feats, u8"; "));
+                    return _as(std::string, sys::cstr(ret));
+                }()
+                                                                : std::string("unknown"),
+                                   .tagsDisplay = _as(std::string, _as(sys::cstr, sys::str::join(tags, u8"; "))) };
+
                 for (const sys::str& tag : tags)
                     MusicPlayer::playlists[std::u8string(tag)].emplace_back(track);
             }
             if (ec)
             {
-                CommandInvocation::println("[log.warn] Couldn't fully iterate through music directory, got error code {}.", ec.value());
+                // CmdInv::println("[log.warn] Couldn't fully iterate through music directory, got error code {}.", ec.value());
+                ret.emplace_back(ec);
                 ec.clear();
             }
         }
 
         if (MusicPlayer::playlists.empty())
         {
-            CommandInvocation::println("[log.warn] Couldn't find any tracks to play! (Did you add any under `music/`?)");
-            return false;
+            // CmdInv::println("[log.warn] Couldn't find any tracks to play! (Did you add any under `music/`?)");
+            ret.emplace_back(std::make_error_code(std::errc::no_such_file_or_directory));
+            return ret;
         }
 
         for (auto& [_, playlist] : MusicPlayer::playlists)
             std::ranges::sort(playlist);
 
-        return true;
+        return ret;
     }
 
     [[nodiscard]] static bool rearrangeCurrentPlaylist(auto&& reorder, std::u8string tag)
@@ -257,7 +275,7 @@ public:
 
         reorder(playlist, std::move(tag));
 
-        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; });
+        auto foundIt = std::ranges::find_if(playlist, [&](const MusicPlayer::FoundMusic& v) { return v == toFind; });
         _retif(true, foundIt == playlist.end());
 
         MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
@@ -289,71 +307,59 @@ public:
         }, std::move(tag));
     }
 
-    [[nodiscard]] static bool resume()
+    [[nodiscard]] static sys::result<void, ma_result> resume()
     {
-        _retif(false, !MusicPlayer::audio);
+        _retif(MA_SUCCESS, !MusicPlayer::audio);
 
         Audio& aud = *MusicPlayer::audio;
         if (ma_result res = ma_sound_start(&aud.sound); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to resume track, with error code {}.", _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to resume track, with error code {}.", _as(int, res));
+            return res;
 
         MusicPlayer::isPlaying = true;
-        return true;
+        return {};
     }
-    [[nodiscard]] static bool pause()
+    [[nodiscard]] static sys::result<void, ma_result> pause()
     {
-        _retif(false, !MusicPlayer::audio);
+        _retif(MA_INVALID_OPERATION, !MusicPlayer::audio);
 
         Audio& aud = *MusicPlayer::audio;
         if (ma_result res = ma_sound_stop(&aud.sound); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to pause track, with error code {}.", _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to pause track, with error code {}.", _as(int, res));
+            return res;
 
         MusicPlayer::isPlaying = false;
-        return true;
+        return {};
     }
-    [[nodiscard]] static bool seek(float querySeconds)
+    [[nodiscard]] static sys::result<void, ma_result> seek(float querySeconds)
     {
-        _retif(false, !MusicPlayer::audio);
+        _retif(MA_INVALID_OPERATION, !MusicPlayer::audio);
         Audio& aud = *MusicPlayer::audio;
 
         const sys::integer<ma_uint64> seekQuery(_as(float, ma_engine_get_sample_rate(&MusicPlayer::audioEngine())) * querySeconds);
         if (seekQuery < 0 || seekQuery > aud.frameLen)
-        {
-            CommandInvocation::println("[log.error] Seek query out of duration of media!");
-            return false;
-        }
+            // CmdInv::println("[log.error] Seek query out of duration of media!");
+            return MA_OUT_OF_RANGE;
 
         if (ma_result res = ma_sound_seek_to_pcm_frame(&aud.sound, _as(ma_uint64, seekQuery)); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to seek track, with error code {}.", _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to seek track, with error code {}.", _as(int, res));
+            return res;
 
-        return true;
+        return {};
     }
 
     [[nodiscard]] static float volume() { return ma_engine_get_volume(&MusicPlayer::audioEngine()); }
-    [[nodiscard]] static bool volume(float linear)
+    [[nodiscard]] static sys::result<void, ma_result> volume(float linear)
     {
         if (ma_result res = ma_engine_set_volume(&MusicPlayer::audioEngine(), linear); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to set volume, with error code {}.", _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to set volume, with error code {}.", _as(int, res));
+            return res;
 
-        return true;
+        return {};
     }
 
-    [[nodiscard]] static bool startMusic(sys::str foundMusicName, const std::filesystem::path& foundMusicFile)
+    [[nodiscard]] static sys::result<void, ma_result> startMusic(const std::filesystem::path& foundMusicFile)
     {
-        namespace fs = std::filesystem;
-
         if (!MusicPlayer::audio)
         {
             MusicPlayer::audio = Audio();
@@ -374,24 +380,17 @@ public:
                 ma_sound_init_from_file(&MusicPlayer::audioEngine(), foundMusicFile.string().c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &aud.sound);
 #endif
             res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to load track `{}`, with error code {}.", _as(sys::cstr, sys::str(fs::path(foundMusicFile).generic_u8string())),
-                                       _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to load track `{}`, with error code {}.", _as(sys::cstr, sys::str(fs::path(foundMusicFile).generic_u8string())),
+            //                            _as(int, res));
+            return res;
         sys::optional_destructor sound_dtor = [] noexcept { ma_sound_uninit(&MusicPlayer::audio->sound); };
 
         if (ma_result res = ma_sound_get_length_in_pcm_frames(&aud.sound, &*aud.frameLen); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to get track length in PCM frames, with error code {}.", _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to get track length in PCM frames, with error code {}.", _as(int, res));
+            return res;
         if (ma_result res = ma_sound_get_length_in_seconds(&aud.sound, &aud.audioLen); res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to get track length in seconds, with error code {}.", _as(int, res));
-            return false;
-        }
-        aud.name = native_string(foundMusicName);
+            // CmdInv::println("[log.error] Failed to get track length in seconds, with error code {}.", _as(int, res));
+            return res;
 
         if (ma_result res = ma_sound_set_end_callback(&aud.sound,
                                                       [](void*, ma_sound*)
@@ -401,7 +400,7 @@ public:
                 {
                     if (!MusicPlayer::next()) [[unlikely]]
                     {
-                        CommandInvocation::println("[log.error] Failed to play next track.");
+                        // CmdInv::println("[log.error] Failed to play next track.");
                         MusicPlayer::isPlaying.store(false);
                         return;
                     }
@@ -412,77 +411,96 @@ public:
                 Screen().Post([] { MusicPlayer::isPlaying.store(false); });
         }, nullptr);
             res != MA_SUCCESS)
-        {
-            CommandInvocation::println("[log.error] Failed to set track end callback, with error code {}.", _as(int, res));
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to set track end callback, with error code {}.", _as(int, res));
+            return res;
 
         if (MusicPlayer::isPlaying.load() && !MusicPlayer::resume())
-        {
-            CommandInvocation::println("[log.error] Failed to resume track.");
-            return false;
-        }
+            // CmdInv::println("[log.error] Failed to resume track.");
+            return MA_ERROR;
 
         sound_dtor.release();
         aud_dtor.release();
-        return true;
+        return {};
     }
-    [[nodiscard]] static bool queryStartMusic(std::u8string_view query)
+    [[nodiscard]] static sys::result<void, ma_result> queryStartMusic(std::u8string_view query)
     {
-        sys::result<FoundMusic> foundRes = MusicPlayer::musicLookup(query);
-        _retif(false, !foundRes);
+        namespace fs = std::filesystem;
 
-        const FoundMusic found = foundRes.move();
+        sys::result<fs::path, std::error_code> foundRes = MusicPlayer::musicLookup(query);
+        _retif(MA_ERROR, !foundRes);
+
+        const fs::path found = foundRes.move();
         const std::vector<FoundMusic>& playlist = MusicPlayer::currentPlaylist();
-        const sz foundIndex(std::distance(playlist.begin(), std::ranges::find(playlist, found)));
+    Again:
+        const sz foundIndex(std::distance(playlist.begin(), std::ranges::find_if(playlist, [&found](const FoundMusic& music) { return music.file == found; })));
+        if (MusicPlayer::playlistTag != u8"all" && foundIndex == playlist.size())
+        {
+            MusicPlayer::playlistTag = u8"all";
+            goto Again;
+        }
         MusicPlayer::currentTrack = foundIndex < playlist.size() ? i32(foundIndex) : i32::sentinel();
-        return MusicPlayer::startMusic(found.name, found.file);
+
+        return MusicPlayer::startMusic(found);
     }
-    [[nodiscard]] static bool stopMusic()
+    [[nodiscard]] static sys::result<void, ma_result> stopMusic()
     {
-        _retif(true, !MusicPlayer::audio);
+        _retif({}, !MusicPlayer::audio);
 
         Audio& aud = *MusicPlayer::audio;
-        if (ma_result res = ma_sound_stop(&aud.sound); res != MA_SUCCESS) [[unlikely]]
-            CommandInvocation::println("[log.warn] Couldn't stop track, with error code {}.", _as(int, res));
+        ma_result res = ma_sound_stop(&aud.sound);
+        // if (res != MA_SUCCESS) [[unlikely]]
+        // CmdInv::println("[log.warn] Couldn't stop track, with error code {}.", _as(int, res));
 
         ma_sound_uninit(&aud.sound);
         MusicPlayer::audio = std::nullopt;
         MusicPlayer::hasAudio.store(false);
         MusicPlayer::isPlaying.store(false);
 
-        return true;
+        if (res != MA_DEVICE_NOT_STARTED)
+            return res;
+        return {};
     }
 
-    [[nodiscard]] static bool play()
+    [[nodiscard]] static sys::result<void, ma_result> play()
     {
-        _retif(false, !MusicPlayer::stopMusic());
+        auto stopRes = MusicPlayer::stopMusic();
+        _retif(stopRes, !stopRes);
 
         const std::vector<FoundMusic>& playlist = MusicPlayer::currentPlaylist();
         if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= playlist.size())
         {
             MusicPlayer::currentTrack = 0_i32;
-            _retif(false, playlist.empty());
+            _retif(MA_INVALID_OPERATION, playlist.empty());
 
             std::u8string tag(MusicPlayer::playlistTag);
             if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(tag) && !MusicPlayer::shufflePlaylist(std::move(tag)))
-                CommandInvocation::println("[log.warn] Couldn't to re-shuffle playlist! (Was at end of shuffled playlist.)");
+                // CmdInv::println("[log.warn] Couldn't to re-shuffle playlist! (Was at end of shuffled playlist.)");
+                return MA_ERROR;
         }
 
         Screen().PostEvent(ui::Event::Custom);
 
-        return MusicPlayer::startMusic(playlist[sz(MusicPlayer::currentTrack)].name, playlist[sz(MusicPlayer::currentTrack)].file);
+        return MusicPlayer::startMusic(playlist[sz(MusicPlayer::currentTrack)].file);
     }
-    [[nodiscard]] static bool next()
+    [[nodiscard]] static sys::result<void, ma_result> next()
     {
         const bool wasPlaying = MusicPlayer::playing();
 
         if (MusicPlayer::loaded())
         {
-            _retif(false, !MusicPlayer::stopMusic());
+            auto stopRes = MusicPlayer::stopMusic();
+            _retif(stopRes, !stopRes);
             ++MusicPlayer::currentTrack;
         }
 
-        return MusicPlayer::play() && (!wasPlaying || MusicPlayer::resume());
+        auto playRes = MusicPlayer::play();
+        _retif(playRes, !playRes);
+        if (!wasPlaying)
+        {
+            auto resRes = MusicPlayer::resume();
+            _retif(resRes, !resRes);
+        }
+
+        return {};
     }
 };

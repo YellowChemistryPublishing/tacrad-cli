@@ -1,3 +1,5 @@
+#pragma once
+
 #include <algorithm>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -16,15 +18,21 @@
 
 #include <module/sys>
 
+#include <CmdInv.inl>
 #include <Config.h>
-#include <Exec.inl>
 #include <Style.h>
 #include <Utility.h>
 
 namespace ui = ftxui;
 
+/// @brief Displays command history and output.
+/// @note Pass `byptr`.
 class ConsoleImpl : public ui::ComponentBase
 {
+public:
+    // Command invocation (and output) history.
+    std::vector<CmdInv::Entry> history; // NOLINT(misc-non-private-member-variables-in-classes)
+private:
     std::vector<std::string> lastLines;
     sz linesSize = 0_uz;
     i32 lineWidth = 1_i32;
@@ -33,10 +41,10 @@ class ConsoleImpl : public ui::ComponentBase
     sz lastHistorySize = 0_uz;
     ui::Box bounds;
 
-    void renderLastLines(const std::vector<CommandInvocation::Entry>& history)
+    void renderLastLines()
     {
         i32 maxLineWidth = std::max(i32(this->bounds.x_max) - i32(this->bounds.x_min), i32::highest());
-        if (this->lastHistorySize > history.size() || this->lineWidth != maxLineWidth)
+        if (this->lastHistorySize > this->history.size() || this->lineWidth != maxLineWidth)
         {
             this->containerComp->DetachAllChildren();
             this->lastLines.clear();
@@ -45,7 +53,7 @@ class ConsoleImpl : public ui::ComponentBase
         }
 
         this->linesSize = this->lastLines.size();
-        for (const auto& entry : std::span(history.begin() + *ssz(this->lastHistorySize), history.end()))
+        for (const auto& entry : std::span(this->history.begin() + *ssz(this->lastHistorySize), this->history.end()))
         {
             const auto process = [&](const std::string& text)
             {
@@ -59,24 +67,24 @@ class ConsoleImpl : public ui::ComponentBase
             process(entry.output);
         }
     }
-    void sync(const std::vector<CommandInvocation::Entry>& history)
+    void sync()
     {
         const bool follow = (this->selected >= i32(this->containerComp->ChildCount()) - 1_i32) || (this->containerComp->ChildCount() == 0_uz);
 
         for (sz i = this->linesSize; i < this->lastLines.size(); i++)
             this->containerComp->Add(this->createEntry(this->lastLines[i]));
-        this->lastHistorySize = history.size();
+        this->lastHistorySize = this->history.size();
 
         if (follow && !this->lastLines.empty())
             this->selected = i32(this->lastLines.size()) - 1_i32;
     }
-    void syncIfNeeded(const std::vector<CommandInvocation::Entry>& history)
+    void syncIfNeeded()
     {
-        if (this->lastHistorySize != history.size())
-        {
-            this->renderLastLines(history);
-            this->sync(history);
-        }
+        if (this->lastHistorySize == this->history.size())
+            return;
+
+        this->renderLastLines();
+        this->sync();
     }
 
     [[nodiscard]] ui::Element postProcessEntry(const ui::EntryState& state)
@@ -100,11 +108,12 @@ class ConsoleImpl : public ui::ComponentBase
     ui::Component containerComp = ui::Container::Vertical({}, &*this->selected);
     ui::Component displayComp = ui::Renderer(this->containerComp, [this]() -> ui::Element
     {
-        this->syncIfNeeded(CommandInvocation::rawHistory());
+        this->syncIfNeeded();
         return (this->lastLines.empty() ? ui::text(Config::BlankText) | ui::center : this->containerComp->Render()) | vscroll(this->bounds);
     });
 public:
     explicit ConsoleImpl() { this->Add(this->displayComp); }
 };
 
+/// @brief Create a `ConsoleImpl` component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ Console() { return ui::Make<ConsoleImpl>(); }

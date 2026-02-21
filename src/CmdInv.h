@@ -1,10 +1,15 @@
 #pragma once
 
-#include <cctype>
+#include <cstddef>
+#include <cstdlib>
 #include <format>
+#include <ftxui/component/event.hpp>
+#include <ftxui/component/loop.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <iterator>
-#include <memory>
+#include <ranges>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -13,91 +18,116 @@
 #include <module/sys>
 #include <module/sys.Text>
 
-#include <Config.h>
-#include <Exec.inl>
+#include <CmdInv.inl>
 #include <Music.h>
-#include <components/StatusBar.h>
+#include <Screen.h>
 
-struct CommandProcessor
+inline void CmdInv::help(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
-    CommandProcessor() = delete;
+    _retif(CmdInv::println(history, R"([log.error] "help" takes no arguments!)"), cmd.size() > 1);
 
-    static std::vector<std::string> argvParse(std::string_view cmd)
+    for (const auto& [query, _] : CmdInv::ValidCommands)
     {
-        std::vector<std::string> argv;
-        bool ignoreSpaces = false;
-        for (auto it = cmd.begin(); it != cmd.end();) // NOLINT(readability-qualified-auto)
+        std::string cmdName;
+        for (const auto& tokenSet : query.startsWith)
         {
-            while (it != cmd.end() && std::isspace(*it))
-                ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            if (it == cmd.end())
-                break;
-
-            std::string arg;
-            while (it != cmd.end() && (ignoreSpaces || !std::isspace(*it)))
-            {
-                if (*it == '\\')
-                {
-                    const auto next = std::next(it); // NOLINT(readability-qualified-auto)
-                    if (next == cmd.end() || (*next != ' ' && *next != '\\' && *next != '"'))
-                        arg.push_back('\\');
-                    else
-                    {
-                        arg.push_back(*next);
-                        ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                    }
-                }
-                else if (*it == '"')
-                    ignoreSpaces = !ignoreSpaces;
-                else
-                    arg.push_back(*it);
-
-                ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            }
-            argv.emplace_back(std::move(arg));
-
-            if (it != cmd.end())
-                ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            for (const auto& token : tokenSet)
+                cmdName.append(token).push_back('|');
+            if (!cmdName.empty())
+                cmdName.back() = ' ';
         }
 
-        return argv;
+        if (!cmdName.empty())
+            cmdName.pop_back();
+        if (!query.exactCount)
+            cmdName.append(" ...");
+
+        CmdInv::println(history, "{}\n    {}\n    {}", cmdName, query.usage, query.desc);
     }
+}
+inline void CmdInv::clear(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] "clear" takes no arguments!)"), cmd.size() > 1);
+    CmdInv::clearHistory(history);
+}
+inline void CmdInv::quit(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] "exit" takes no arguments!)"), cmd.size() > 1);
+    Screen().Exit();
+}
 
-    /// @brief Process a command entered into the terminal.
-    static bool command(std::string_view cmd, std::weak_ptr<StatusBarImpl> statusBarPtr = {})
+inline void CmdInv::togglePlayingOrPlay(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    if (cmd.size() == 1 && MusicPlayer::loaded())
     {
-        const std::vector<std::string> argv = CommandProcessor::argvParse(cmd);
-
-        if (argv.empty())
-            return false;
-
-        CommandInvocation::pushCommand(std::string(cmd));
-        if (!CommandInvocation::matchExecuteCommand(argv))
-            CommandInvocation::println("[log.error] Unrecognized command `{}` with args {}.", argv.front(), std::span(argv).subspan(1));
-
-        if (const std::shared_ptr<StatusBarImpl> statusBar = statusBarPtr.lock())
-            statusBar->showLastCommandOutput();
-
-        return true;
-    }
-
-    /// @brief Process a quick action entered into the terminal.
-    static bool quickAction(std::string_view cmd)
-    {
-        const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);
-        const sz trimEnd = cmd.find_last_not_of(' ') + 1uz;
-        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        const sys::cstr actionId = sys::cstr(std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin(),
-                                                              trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end()))
-                                       .to_lower();
-        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-        if (actionId == "a")
+        if (MusicPlayer::playing())
         {
-            MusicPlayer::autoplay(!MusicPlayer::autoplay());
-            return true;
+            if (!MusicPlayer::pause())
+                CmdInv::println(history, "[log.error] Failed to pause track.");
         }
-
-        return CommandInvocation::matchExecuteCommand({ std::format(":{}", actionId) });
+        else if (!MusicPlayer::resume())
+            CmdInv::println(history, "[log.error] Failed to resume track.");
     }
-};
+    else
+        CmdInv::play(history, cmd);
+}
+inline void CmdInv::resumeOrPlay(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    if (cmd.size() == 1 && !MusicPlayer::playing())
+    {
+        if (!MusicPlayer::resume())
+            CmdInv::println(history, "[log.error] Failed to resume track.");
+    }
+    else
+        CmdInv::play(history, cmd);
+}
+inline void CmdInv::play(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] Track title argument must be given to "play"!")"), cmd.size() < 2);
+    _retif(CmdInv::println(history, "[log.error] Failed to stop track."), !MusicPlayer::stopMusic());
+
+    sys::cstr lookupName = sys::cstr::join(std::span(std::next(cmd.begin(), 1), cmd.end()), ' ');
+    _retif(CmdInv::println(history, "[log.error] Failed to start track."), !MusicPlayer::queryStartMusic(sys::str(_as(std::string_view, lookupName))));
+}
+inline void CmdInv::resume(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] "resume" takes no arguments!)"), cmd.size() > 1);
+    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)"), !MusicPlayer::resume());
+}
+inline void CmdInv::pause(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] "pause" takes no arguments!)"), cmd.size() > 1);
+    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)"), !MusicPlayer::pause());
+}
+inline void CmdInv::seek(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] Seek position argument (in seconds) must be given to "seek"!)"), cmd.size() < 2);
+    _retif(CmdInv::println(history, R"([log.error] Extra arguments given to "seek"!)"), cmd.size() > 2);
+    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)"), !MusicPlayer::loaded());
+
+    char* readEnd = nullptr; // NOLINT(misc-const-correctness)
+    const float q = std::strtof(cmd[1].c_str(), &readEnd);
+    _retif(CmdInv::println(history, R"([log.error] Invalid index argument given to "seek"!)"), readEnd - cmd[1].data() != _as(ptrdiff_t, cmd[1].size()));
+    _retif(CmdInv::println(history, "[log.error] Failed to seek track."), !MusicPlayer::seek(q));
+}
+inline void CmdInv::volume(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] Volume argument (linear) must be given to "vol"!)"), cmd.size() < 2);
+    _retif(CmdInv::println(history, R"([log.error] Extra arguments given to "vol"!)"), cmd.size() > 2);
+
+    float v = 1.0f; // NOLINT(misc-const-correctness)
+    std::istringstream(cmd[1]) >> v;
+    _retif(CmdInv::println(history, "[log.error] Failed to set volume."), !MusicPlayer::volume(v));
+}
+inline void CmdInv::stop(std::vector<CmdInv::Entry>& history, const std::vector<std::string>&)
+{
+    if (MusicPlayer::loaded())
+        _retif(CmdInv::println(history, "[log.error] Failed to stop track."), !MusicPlayer::stopMusic());
+    else
+        CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" to start media.)");
+}
+inline void CmdInv::next(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
+{
+    _retif(CmdInv::println(history, R"([log.error] Extra arguments given to "next"!)"), cmd.size() > 1);
+    _retif(CmdInv::println(history, "[log.error] Failed to play next track."), !MusicPlayer::next());
+}

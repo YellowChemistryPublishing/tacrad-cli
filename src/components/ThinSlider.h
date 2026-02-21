@@ -23,13 +23,14 @@
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <CmdInv.inl>
 #include <Config.h>
-#include <Exec.inl>
 #include <Screen.h>
 #include <Style.h>
 
 namespace ui = ftxui;
 
+/// @brief Displays a thin, interactable slider.
 class ThinSliderImpl : public ui::ComponentBase
 {
     std::function<void(float)> onChange;
@@ -37,8 +38,8 @@ class ThinSliderImpl : public ui::ComponentBase
     ui::ElementDecorator decoratePreReflect = ui::nothing;
 
     float value = 0.0f; // b/w `[0.0f, 1.0f]`
-    ui::Box bounds;
     ui::CapturedMouse capturedMouse;
+    ui::Box bounds;
     ui::Component displayComp = ui::Renderer(
                                     [this]
     {
@@ -96,7 +97,7 @@ public:
     }
 };
 
-/// @brief Create a status bar component.
+/// @brief Create a `ThinSliderImpl` component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ ThinSlider(std::function<void(float)> onChange, std::function<void(float&)> onDraw,
                                                                             ui::ElementDecorator decoratePreReflect = ui::nothing)
 {

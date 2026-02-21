@@ -8,8 +8,10 @@
 namespace ui = ftxui;
 
 /// @brief Global static configuration.
-struct Config
+/// @note Static class.
+class Config
 {
+public:
     Config() = delete;
 
     static constexpr std::string_view ApplicationName = "♪♫ tacrad-cli";
@@ -18,7 +20,7 @@ struct Config
     static constexpr std::string_view BlankText = "Nothing to see here!";
 
     static constexpr float LowVolumeThreshold = 0.5f;
-    static constexpr i32 VolumeSliderWidth = 8_i32;
+    static constexpr i32 VolumeSliderWidth = 6_i32;
 
     static constexpr char QuickActionKey = ':';
     static constexpr std::chrono::milliseconds QuickActionDelay = std::chrono::milliseconds(1000);
@@ -30,13 +32,16 @@ struct Config
 };
 
 /// @brief User settings that can be modified at runtime.
-struct UserSettings
+/// @note Static class.
+class UserSettings
 {
+public:
     UserSettings() = delete;
 
     static inline ui::BorderStyle border = ui::BorderStyle::LIGHT;
 
     static inline const ui::Color FlavorEmphasizedColor = ui::Color::White;
+    static inline const ui::Color FlavorDescriptionColor = ui::Color::Grey70;
     static inline const ui::Color FlavorUnemphasizedColor = ui::Color::GrayDark;
 
     static constexpr std::string_view PlayButtonLabel = ">";

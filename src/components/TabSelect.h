@@ -21,15 +21,17 @@
 
 namespace ui = ftxui;
 
+/// @brief Tab selector banner for different UI views.
+/// @note Pass `byptr`.
 class TabSelectImpl : public ui::ComponentBase
 {
-    const std::vector<std::string> tabValues = {
+    static inline const std::vector<std::string> TabValues = {
         "UI",
         "Console",
     };
 
     const std::shared_ptr<TabContainerImpl> containerComp;
-    ui::Component selectorComp = ui::Menu(&this->tabValues, &*this->containerComp->tabSelected, []() -> ui::MenuOption
+    ui::Component selectorComp = ui::Menu(&TabSelectImpl::TabValues, &*this->containerComp->selectedTab, []() -> ui::MenuOption
     {
         ui::MenuOption ret = ui::MenuOption::HorizontalAnimated();
         ret.underline.color_active = UserSettings::FlavorEmphasizedColor;
@@ -42,15 +44,9 @@ class TabSelectImpl : public ui::ComponentBase
     }());
 public:
     explicit TabSelectImpl(std::shared_ptr<TabContainerImpl> containerComp) : containerComp(std::move(containerComp)) { this->Add(this->selectorComp); }
-
-    TabSelectImpl(const TabSelectImpl&) = delete;
-    TabSelectImpl(TabSelectImpl&&) = delete;
-    ~TabSelectImpl() override = default;
-
-    TabSelectImpl& operator=(const TabSelectImpl&) = delete;
-    TabSelectImpl& operator=(TabSelectImpl&&) = delete;
 };
 
+/// @brief Create a `TabSelectImpl` component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ TabSelect(std::shared_ptr<TabContainerImpl> containerComp)
 {
     return ui::Make<TabSelectImpl>(std::move(containerComp));

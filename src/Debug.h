@@ -40,11 +40,13 @@
     retryDelay *= 2;                                                                                                   \
     goto PrintAgain;
 
+/// @brief Logs a formatted message to the debug log file.
 template <typename... Args>
 inline void debugLog(std::format_string<Args...> fmt, Args&&... args /* NOLINT(readability-identifier-naming) */) noexcept
 {
     _impl_debug_log(std::ofstream);
 }
+/// @brief Logs a formatted message to the debug log file.
 template <typename... Args>
 inline void wdebugLog(std::wformat_string<Args...> fmt, Args&&... args /* NOLINT(readability-identifier-naming) */) noexcept
 {

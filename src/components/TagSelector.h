@@ -21,6 +21,8 @@
 
 namespace ui = ftxui;
 
+/// @brief Displays a banner for playlist selection.
+/// @note Pass `byptr`.
 class TagSelectorImpl : public ui::ComponentBase
 {
     std::map<std::u8string, std::vector<MusicPlayer::FoundMusic>> playlists;
@@ -28,15 +30,14 @@ class TagSelectorImpl : public ui::ComponentBase
     i32 selected = 0_i32;
     ui::Box bounds;
 public:
-    sys::str lookingAtTag = MusicPlayer::playlistTag; // NOLINT(misc-non-private-member-variables-in-classes)
+    // Currently selected playlist name.
+    sys::str selectedTag = MusicPlayer::playlistTag; // NOLINT(misc-non-private-member-variables-in-classes)
 private:
     void syncIfNeeded()
     {
         const std::map<std::u8string, std::vector<MusicPlayer::FoundMusic>>& freshPlaylists = MusicPlayer::allPlaylists();
         if (this->playlists != freshPlaylists)
         {
-            this->containerComp->DetachAllChildren();
-
             const auto addTag = [this](std::u8string_view tag)
             {
                 this->tagNames.emplace_back(tag);
@@ -44,11 +45,12 @@ private:
                                                        ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
                 {
                     return postProcessDisplayListEntry(state, this->selected, this->bounds,
-                                                       [&state] { return state.label == _as(std::string_view, sys::cstr(MusicPlayer::playlistTag)); });
+                                                       [&] { return state.label == _as(std::string_view, sys::cstr(MusicPlayer::playlistTag)); });
                 },
                                                                              .animated_colors {} }));
             };
 
+            this->containerComp->DetachAllChildren();
             addTag(u8"all");
             addTag(u8"uncategorized");
             for (const auto& [tag, _] : freshPlaylists)
@@ -59,7 +61,7 @@ private:
         }
 
         if (this->selected >= 0_i32 && this->selected < this->tagNames.size()) [[likely]]
-            this->lookingAtTag = this->tagNames[sz(this->selected)];
+            this->selectedTag = this->tagNames[sz(this->selected)];
     }
 
     ui::Component containerComp = ui::Container::Vertical({}, &*this->selected);
@@ -76,5 +78,5 @@ public:
     }
 };
 
-/// @brief Create a tag selector component.
+/// @brief Create a `TagSelectorImpl` component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ TagSelector() { return ui::Make<TagSelectorImpl>(); }

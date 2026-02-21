@@ -1,0 +1,102 @@
+#pragma once
+
+#include <cctype>
+#include <format>
+#include <iterator>
+#include <memory>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include <module/sys>
+#include <module/sys.Text>
+
+#include <CmdInv.inl>
+#include <Config.h>
+#include <Music.h>
+#include <components/StatusBar.h>
+
+/// @brief Command processing functions.
+/// @note Static class.
+class CmdProc final
+{
+public:
+    CmdProc() = delete;
+
+    static std::vector<std::string> argvParse(std::string_view cmd)
+    {
+        std::vector<std::string> argv;
+        bool ignoreSpaces = false;
+        for (auto it = cmd.begin(); it != cmd.end();) // NOLINT(readability-qualified-auto)
+        {
+            while (it != cmd.end() && std::isspace(*it))
+                ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (it == cmd.end())
+                break;
+
+            std::string arg;
+            while (it != cmd.end() && (ignoreSpaces || !std::isspace(*it)))
+            {
+                if (*it == '\\')
+                {
+                    const auto next = std::next(it); // NOLINT(readability-qualified-auto)
+                    if (next == cmd.end() || (*next != ' ' && *next != '\\' && *next != '"'))
+                        arg.push_back('\\');
+                    else
+                    {
+                        arg.push_back(*next);
+                        ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                    }
+                }
+                else if (*it == '"')
+                    ignoreSpaces = !ignoreSpaces;
+                else
+                    arg.push_back(*it);
+
+                ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            }
+            argv.emplace_back(std::move(arg));
+
+            if (it != cmd.end())
+                ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        }
+
+        return argv;
+    }
+
+    static void invoke(std::vector<CmdInv::Entry>& history, std::string cmd, std::weak_ptr<StatusBarImpl> statusBarPtr = {})
+    {
+        const std::vector<std::string> argv = CmdProc::argvParse(cmd);
+        if (argv.empty())
+            return;
+
+        CmdInv::pushCommand(history, std::move(cmd));
+        if (!CmdInv::matchExecuteCommand(history, argv))
+            CmdInv::println(history, "[log.error] Unrecognized command `{}` with args {}.", argv.front(), std::span(argv).subspan(1));
+
+        if (const std::shared_ptr<StatusBarImpl> statusBar = statusBarPtr.lock())
+            if (!statusBar->showLastCommandOutput())
+                debugLog("Failed to show last command output on status bar.");
+    }
+
+    [[nodiscard]] static bool invokeQuickAction(std::vector<CmdInv::Entry>& history, const std::string_view cmd)
+    {
+        const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);
+        const sz trimEnd = cmd.find_last_not_of(' ') + 1uz;
+        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        const sys::cstr actionId = sys::cstr(std::string_view(trimBeg != std::string_view::npos ? cmd.begin() + ssz(trimBeg) : cmd.begin(),
+                                                              trimEnd != std::string_view::npos ? cmd.begin() + ssz(trimEnd) : cmd.end()))
+                                       .to_lower();
+        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
+        if (actionId == "a")
+        {
+            MusicPlayer::autoplay(!MusicPlayer::autoplay());
+            return true;
+        }
+
+        return CmdInv::matchExecuteCommand(history, { std::format(":{}", actionId) });
+    }
+};

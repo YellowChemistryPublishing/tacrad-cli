@@ -13,6 +13,7 @@
 
 #include <Config.h>
 #include <Style.h>
+#include <components/Details.h>
 #include <components/Playlist.h>
 #include <components/PlaylistBar.h>
 #include <components/StatusBar.h>
@@ -20,20 +21,22 @@
 
 namespace ui = ftxui;
 
+/// @brief Displays the primary view for playing music.
+/// @note Pass `byptr`.
 class UIImpl : public ui::ComponentBase
 {
     i32 leftSize = UserSettings::TagSelectPanelInitWidth;
     i32 rightSize = UserSettings::DetailsPanelInitWidth;
 
     std::shared_ptr<TagSelectorImpl> tagListComp = std::static_pointer_cast<TagSelectorImpl>(TagSelector());
-    std::shared_ptr<PlaylistImpl> playlistComp = std::static_pointer_cast<PlaylistImpl>(Playlist(tagListComp));
+    std::shared_ptr<PlaylistImpl> playlistComp;
     ui::Component playlistPanelComp = ui::Container::Vertical({ playlistComp | ui::yflex, PlaylistBar(playlistComp) });
-    ui::Component trackInfoComp = ui::Renderer([] { return ui::text("details here"); });
+    ui::Component trackDetailsComp = Details(tagListComp, playlistComp);
 
-    std::shared_ptr<StatusBarImpl> statBarComp = std::static_pointer_cast<StatusBarImpl>(StatusBar());
+    std::shared_ptr<StatusBarImpl> statBarComp;
 
     ui::Component containerComp = ui::Container::Vertical(
-        { ui::ResizableSplit({ .main = trackInfoComp,
+        { ui::ResizableSplit({ .main = trackDetailsComp,
                                .back = ui::ResizableSplit(
                                    { .main = tagListComp, .back = playlistPanelComp, .direction = ui::Direction::Left, .main_size = &*this->leftSize, .separator_func = psep }),
                                .direction = ui::Direction::Right,
@@ -42,16 +45,14 @@ class UIImpl : public ui::ComponentBase
               ui::yflex,
           ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
-    explicit UIImpl() { this->Add(this->containerComp); }
-
-    UIImpl(const UIImpl&) = delete;
-    UIImpl(UIImpl&&) = delete;
-    ~UIImpl() override = default;
-
-    UIImpl& operator=(const UIImpl&) = delete;
-    UIImpl& operator=(UIImpl&&) = delete;
+    explicit UIImpl(std::shared_ptr<ConsoleImpl> consoleComp) :
+        playlistComp(std::static_pointer_cast<PlaylistImpl>(Playlist(tagListComp, consoleComp))), statBarComp(std::static_pointer_cast<StatusBarImpl>(StatusBar(consoleComp)))
+    {
+        this->Add(this->containerComp);
+    }
 
     std::shared_ptr<StatusBarImpl> statusBar() { return this->statBarComp; }
 };
 
-inline ui::Component /* NOLINT(readability-identifier-naming) */ UI() { return ui::Make<UIImpl>(); }
+/// @brief Create a `UIImpl` component.
+inline ui::Component /* NOLINT(readability-identifier-naming) */ UI(std::shared_ptr<ConsoleImpl> consoleComp) { return ui::Make<UIImpl>(std::move(consoleComp)); }

@@ -13,7 +13,8 @@
 
 namespace ui = ftxui;
 
-inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vector<std::string>& out)
+/// @brief Split a string by a delimiter, or until a maximum line length is reached.
+constexpr void stringSplitLengthConstrained(const std::string_view str, const sz len, std::vector<std::string>& out)
 {
     const sys::str32_view v = std::span(str);
     for (auto it = v.begin(); it < v.end();)
@@ -31,7 +32,8 @@ inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vect
     }
 }
 
-[[nodiscard]] inline std::string truncateStrForDisplay(const std::string_view str, const ui::Box& bounds)
+/// @brief Truncate a string, adding ellipses if trimmed.
+[[nodiscard]] _pure_const constexpr std::string truncateStrForDisplay(const std::string_view str, const ui::Box& bounds)
 {
     u64 ccount = 0_u64;
     ssz trimFrom = 0_z;
@@ -56,7 +58,8 @@ inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vect
     return std::string(str);
 }
 
-[[nodiscard]] inline bool setVecStartsWith(const std::vector<std::set<std::string_view>>& setVec, const std::vector<std::string>& with)
+/// @brief Match a string vector against a stringset vector.
+[[nodiscard]] _pure_const constexpr bool setVecStartsWith(const std::vector<std::set<std::string_view>>& setVec, const std::vector<std::string>& with)
 {
     sz i = 0_uz;
     for (const auto& tokenSet : setVec)
@@ -69,7 +72,7 @@ inline void stringSplitLengthConstrained(std::string_view str, sz len, std::vect
 }
 
 /// @brief Base64 encode a string for OSC 52 clipboard.
-[[nodiscard]] inline std::string base64Encode(std::u8string_view input)
+[[nodiscard]] _pure_const constexpr std::string base64Encode(std::u8string_view input)
 {
     static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     std::string ret;

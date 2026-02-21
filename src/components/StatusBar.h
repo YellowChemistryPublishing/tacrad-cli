@@ -26,23 +26,22 @@
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <CmdInv.inl>
 #include <Config.h>
-#include <Exec.inl>
 #include <Music.h>
 #include <Screen.h>
 #include <Style.h>
+#include <components/Console.h>
 #include <components/ThinSlider.h>
 
 namespace ui = ftxui;
 
-/// @brief Status bar component that displays temporary messages and track progress.
+/// @brief Displays temporary messages, track controls, and track progress.
 /// @note
 /// Displays the last command output for `Config::StatusBarMessageDelay`, then reverts to track info.
 /// Pass `byptr`.
 class StatusBarImpl : public ui::ComponentBase
 {
-    ui::ScreenInteractive& screen = Screen(); // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
-
     std::string message;
     std::chrono::steady_clock::time_point messageExpiry = std::chrono::steady_clock::time_point::min();
     std::mutex messageLock;
@@ -68,7 +67,7 @@ class StatusBarImpl : public ui::ComponentBase
 
             this->message.clear();
             this->messageExpiry = std::chrono::steady_clock::time_point::min();
-            this->screen.PostEvent(ui::Event::Custom);
+            Screen().PostEvent(ui::Event::Custom);
         }
     } };
 
@@ -86,35 +85,37 @@ class StatusBarImpl : public ui::ComponentBase
         }
     } };
 
+    std::shared_ptr<ConsoleImpl> consoleComp;
+
     ui::Component playButtonComp = ui::Button("Play",
-                                              []
+                                              [this]
     {
         if (MusicPlayer::playing())
         {
             if (!MusicPlayer::pause())
-                CommandInvocation::println("[log.error] Failed to pause track.");
+                CmdInv::println(this->consoleComp->history, "[log.error] Failed to pause track.");
             return;
         }
 
         if (MusicPlayer::loaded())
         {
             if (!MusicPlayer::resume())
-                CommandInvocation::println("[log.error] Failed to resume track.");
+                CmdInv::println(this->consoleComp->history, "[log.error] Failed to resume track.");
             return;
         }
 
         if (!MusicPlayer::play() || !MusicPlayer::resume())
-            CommandInvocation::println("[log.error] Failed to play track.");
+            CmdInv::println(this->consoleComp->history, "[log.error] Failed to play track.");
     },
                                               ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element
     { return postProcessIconButton(MusicPlayer::playing() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state); },
                                                                  .animated_colors {} });
     ui::Component stopButtonComp =
-        ui::Button("Stop", [] { CommandInvocation::stop({ "[invoked by button press]" }); },
+        ui::Button("Stop", [this] { CmdInv::stop(this->consoleComp->history, { "[invoked by button press]" }); },
                    ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(UserSettings::StopButtonLabel), state); },
                                       .animated_colors {} });
     ui::Component nextButtonComp =
-        ui::Button("Next", [] { CommandInvocation::next({ "[invoked by button press]" }); },
+        ui::Button("Next", [this] { CmdInv::next(this->consoleComp->history, { "[invoked by button press]" }); },
                    ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(UserSettings::NextButtonLabel), state); },
                                       .animated_colors {} });
     ui::Component volumeButtonComp = ui::Button("VolumeToggle",
@@ -147,25 +148,26 @@ class StatusBarImpl : public ui::ComponentBase
     ui::Component volumeSliderComp = ThinSlider([](const float value) { (void)MusicPlayer::volume(value); }, [](float& val) { val = MusicPlayer::volume(); },
                                                 ui::size(ui::WIDTH, ui::EQUAL, Config::VolumeSliderWidth));
     ui::Component progressSliderComp = ThinSlider(
-                                           [](const float value)
+                                           [this](const float value)
     {
         if (MusicPlayer::loaded())
-            if (!MusicPlayer::seek(value * MusicPlayer::totalTime()))
-                CommandInvocation::println("[log.error] Failed to seek track.");
+            if (!MusicPlayer::seek(value * MusicPlayer::totalTime().move_or(0.0f)))
+                CmdInv::println(this->consoleComp->history, "[log.error] Failed to seek track.");
     },
                                            [](float& val)
     {
         if (MusicPlayer::loaded())
         {
-            const float total = MusicPlayer::totalTime();
-            val = (total > 0.0f) ? (MusicPlayer::currentTime() / total) : 0.0f;
+            const float total = MusicPlayer::totalTime().move_or(0.0f);
+            val = (total > 0.0f) ? (MusicPlayer::currentTime().move_or(0.0f) / total) : 0.0f;
         }
         else
             val = 0.0f;
     }, ui::xflex) |
         ui::Renderer([](ui::Element elem)
     {
-        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime()), MusicPlayer::formatTime(MusicPlayer::totalTime()))),
+        return ui::hbox({ ui::text(std::format("{} / {}", MusicPlayer::formatTime(MusicPlayer::currentTime().move_or(0.0f)),
+                                               MusicPlayer::formatTime(MusicPlayer::totalTime().move_or(0.0f)))),
                           ui::separatorEmpty(), std::move(elem) }) |
             ui::xflex;
     });
@@ -189,7 +191,7 @@ class StatusBarImpl : public ui::ComponentBase
         return !this->message.empty();
     });
 public:
-    StatusBarImpl() { this->Add(this->displayComp); }
+    explicit StatusBarImpl(std::shared_ptr<ConsoleImpl> consoleComp) : consoleComp(std::move(consoleComp)) { this->Add(this->displayComp); }
 
     /// @brief Show a temporary message on the status bar.
     /// @param msg The message to display (which will auto-clear after `Config::StatusBarMessageDelay` seconds).
@@ -210,10 +212,10 @@ public:
     }
 
     /// @brief Show the last line of the most recent command's output in the status bar.
-    /// @return Whether any output existed to show.
-    bool showLastCommandOutput()
+    /// @return Whether last command existed and was able to be shown.
+    [[nodiscard]] bool showLastCommandOutput()
     {
-        const std::vector<CommandInvocation::Entry>& history = CommandInvocation::rawHistory();
+        const std::vector<CmdInv::Entry>& history = this->consoleComp->history;
         _retif(false, history.empty());
 
         const std::string& output = history.back().output;
@@ -234,5 +236,5 @@ public:
     }
 };
 
-/// @brief Create a status bar component.
-inline ui::Component /* NOLINT(readability-identifier-naming) */ StatusBar() { return ui::Make<StatusBarImpl>(); }
+/// @brief Create a `StatusBarImpl` component.
+inline ui::Component /* NOLINT(readability-identifier-naming) */ StatusBar(std::shared_ptr<ConsoleImpl> consoleComp) { return ui::Make<StatusBarImpl>(std::move(consoleComp)); }

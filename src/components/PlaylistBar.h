@@ -12,8 +12,8 @@
 
 #include <module/sys>
 
+#include <CmdInv.inl>
 #include <Config.h>
-#include <Exec.inl>
 #include <Music.h>
 #include <Style.h>
 #include <Utility.h>
@@ -21,40 +21,43 @@
 
 namespace ui = ftxui;
 
+/// @brief Displays playlist interation functions.
+/// @note Pass `byptr`.
 class PlaylistBarImpl : public ui::ComponentBase
 {
     std::shared_ptr<PlaylistImpl> playlistComp;
 
-    void sortTracks(auto&& reorderTracks)
+    void arrangeTracks(auto&& reorderTracks)
     {
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(this->playlistComp->tagSelectorComp->lookingAtTag);
-        const MusicPlayer::FoundMusic toFind =
-            this->playlistComp->selected >= 0_i32 && this->playlistComp->selected < playlist.size() ? playlist[sz(this->playlistComp->selected)] : MusicPlayer::FoundMusic {};
+        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(this->playlistComp->tagSelector()->selectedTag);
+        const MusicPlayer::FoundMusic toFind = this->playlistComp->selectedTrack() >= 0_i32 && this->playlistComp->selectedTrack() < playlist.size()
+            ? playlist[sz(this->playlistComp->selectedTrack())]
+            : MusicPlayer::FoundMusic {};
 
-        reorderTracks(std::u8string(this->playlistComp->tagSelectorComp->lookingAtTag));
+        reorderTracks(std::u8string(this->playlistComp->tagSelector()->selectedTag));
 
         auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; });
         _retif(, foundIt == playlist.end());
 
-        this->playlistComp->currentTrack = MusicPlayer::currentTrack; // Suppress auto-update to playing track, keep selected one highlighted instead.
-        this->playlistComp->selected = std::distance(playlist.begin(), foundIt);
+        this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
+        this->playlistComp->selectedTrack(std::distance(playlist.begin(), foundIt));
     }
 
     ui::Component containerComp =
         ui::Container::Horizontal(
             { ui::Renderer(ui::filler),
               ui::Button(ui::ButtonOption { .label = UserSettings::ShuffleLabel,
-                                            .on_click = [this] { this->sortTracks(MusicPlayer::shufflePlaylist); },
+                                            .on_click = [this] { this->arrangeTracks(MusicPlayer::shufflePlaylist); },
                                             .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(state.label), state); },
                                             .animated_colors {} }),
               hspace(),
               ui::Button(ui::ButtonOption { .label = UserSettings::LexicographicSortLabel,
-                                            .on_click = [this] { this->sortTracks(MusicPlayer::sortPlaylistLexicographically); },
+                                            .on_click = [this] { this->arrangeTracks(MusicPlayer::sortPlaylistLexicographically); },
                                             .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(state.label), state); },
                                             .animated_colors {} }),
               hspace(),
               ui::Button(ui::ButtonOption { .label = UserSettings::ReverseLexicographicSortLabel,
-                                            .on_click = [this] { this->sortTracks(MusicPlayer::sortPlaylistReverseLexicographically); },
+                                            .on_click = [this] { this->arrangeTracks(MusicPlayer::sortPlaylistReverseLexicographically); },
                                             .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(state.label), state); },
                                             .animated_colors {} }),
               hspace(),
@@ -67,6 +70,7 @@ public:
     explicit PlaylistBarImpl(std::shared_ptr<PlaylistImpl> playlistComp) : playlistComp(std::move(playlistComp)) { this->Add(this->containerComp); }
 };
 
+/// @brief Create a `PlaylistBarImpl` component.
 inline ui::Component /* NOLINT(readability-identifier-naming) */ PlaylistBar(std::shared_ptr<PlaylistImpl> playlistComp)
 {
     return ui::Make<PlaylistBarImpl>(std::move(playlistComp));

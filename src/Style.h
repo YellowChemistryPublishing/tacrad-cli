@@ -9,24 +9,28 @@
 
 #include <Config.h>
 #include <Music.h>
+#include <Utility.h>
 
 namespace ui = ftxui;
 
+/// @brief Horizontally pad both sides of an element with a space.
 inline ui::Element hpad(ui::Element elem) { return ui::hbox({ ui::separatorEmpty(), std::move(elem) | ui::xflex, ui::separatorEmpty() }); }
+
+/// @brief Component displaying only a horizontal space.
 inline ui::Component hspace()
 {
     return ui::Renderer([] { return ui::separatorEmpty(); });
 }
+
+/// @brief A single-space horizontally padded horizontal separator using the user-set style.
 inline ui::Element psep() { return ui::hbox({ ui::separatorEmpty(), ui::separatorStyled(UserSettings::border), ui::separatorEmpty() }); }
 
+/// @brief An element bordered with the user-set style.
 inline ui::Element bordered(ui::Element elem) { return std::move(elem) | ui::borderStyled(UserSettings::border); }
-inline ui::Component hborder()
-{
-    return ui::Renderer([] { return ui::separatorStyled(UserSettings::border); });
-}
 
 /// @brief Vertical scrollable region.
 /// @param bounds Bounds to reflect region dimensions to.
+///
 /// @attention Lifetime assumptions!
 /// ```cpp
 /// ... obj;
@@ -43,6 +47,7 @@ inline ui::ElementDecorator vscroll(ui::Box& bounds)
     return [&bounds](ui::Element elem) { return std::move(elem) | ui::vscroll_indicator | ui::yframe | ui::reflect(bounds); };
 }
 
+/// @brief Post-process an icon button to display interaction state.
 inline ui::Element postProcessIconButton(ui::Element elem, const ui::EntryState& state)
 {
     if (state.active)
@@ -55,6 +60,8 @@ inline ui::Element postProcessIconButton(ui::Element elem, const ui::EntryState&
 
     return elem;
 }
+
+/// @brief Post-process a list entry to display interaction state.
 inline ui::Element postProcessDisplayListEntry(const ui::EntryState& state, i32 selected, const ui::Box& bounds, auto&& extra_cond = [] { return true; })
 {
     ui::Element ret = ui::text(truncateStrForDisplay(state.label, bounds));

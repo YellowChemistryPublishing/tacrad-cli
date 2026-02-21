@@ -11,22 +11,16 @@
 
 namespace ui = ftxui;
 
+/// @brief Container for different UI views.
+/// @note Pass `byptr`.
 class TabContainerImpl : public ui::ComponentBase
 {
 public:
-    i32 tabSelected = 0_i32; // NOLINT(misc-non-private-member-variables-in-classes)
-private:
-    const ui::Component tabComp;
-public:
-    explicit TabContainerImpl(ui::Components components) : tabComp(ui::Container::Tab(std::move(components), &*this->tabSelected)) { this->Add(this->tabComp); }
+    // Currently selected tab index.
+    i32 selectedTab = 0_i32; // NOLINT(misc-non-private-member-variables-in-classes)
 
-    TabContainerImpl(const TabContainerImpl&) = delete;
-    TabContainerImpl(TabContainerImpl&&) = delete;
-    ~TabContainerImpl() override = default;
-
-    TabContainerImpl& operator=(const TabContainerImpl&) = delete;
-    TabContainerImpl& operator=(TabContainerImpl&&) = delete;
+    explicit TabContainerImpl(ui::Components components) { this->Add(ui::Container::Tab(std::move(components), &*this->selectedTab)); }
 };
 
-// NOLINTNEXTLINE(readability-identifier-naming)
-inline ui::Component TabContainer(ui::Components components) { return ui::Make<TabContainerImpl>(std::move(components)); }
+/// @brief Create a `TabContainerImpl` component.
+inline ui::Component /* NOLINT(readability-identifier-naming) */ TabContainer(ui::Components components) { return ui::Make<TabContainerImpl>(std::move(components)); }

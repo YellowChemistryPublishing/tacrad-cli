@@ -11,8 +11,8 @@
 #include <utility>
 
 #include <Clipboard.h>
+#include <CmdInv.h>
 #include <Debug.h>
-#include <Exec.h> // NOLINT(misc-include-cleaner)
 #include <Screen.h>
 #include <Style.h>
 #include <components/Console.h>
@@ -27,27 +27,27 @@ int main()
 {
     try
     {
-        ui::ScreenInteractive& screen = Screen();
-        screen.ForceHandleCtrlC(false);
-        screen.ForceHandleCtrlZ(false);
+        Screen().ForceHandleCtrlC(false);
+        Screen().ForceHandleCtrlZ(false);
 
-        const std::shared_ptr<UIImpl> ui = std::static_pointer_cast<UIImpl>(UI());
-        const ui::Component console = Console();
+        const std::shared_ptr<ConsoleImpl> console = std::static_pointer_cast<ConsoleImpl>(Console());
+        const std::shared_ptr<UIImpl> ui = std::static_pointer_cast<UIImpl>(UI(console));
 
         std::shared_ptr<TabContainerImpl> tabContainer = std::static_pointer_cast<TabContainerImpl>(TabContainer({ ui, console }));
         ui::Component tabSelector = TabSelect(tabContainer);
-        const ui::Component terminal = Terminal(ui->statusBar());
+        const ui::Component terminal = Terminal(console, ui->statusBar());
 
         ui::Component rootContainer = ui::Container::Vertical({
-            std::move(tabSelector) | hpad,
-            std::move(tabContainer) | hpad | ui::yflex,
-            terminal | hpad,
-        });
+                                          std::move(tabSelector),
+                                          std::move(tabContainer) | ui::yflex,
+                                          terminal,
+                                      }) |
+            hpad;
 
         const ui::Component uiRoot = ui::Renderer(rootContainer, [&rootContainer]() -> ui::Element { return rootContainer->Render() | bordered; }) |
             TerminalSpaceToFocusHandler(terminal) | TerminalQuickActionHandler(terminal) | ClipboardHandler();
 
-        screen.Loop(uiRoot);
+        Screen().Loop(uiRoot);
 
         return EXIT_SUCCESS;
     }

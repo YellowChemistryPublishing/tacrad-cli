@@ -7,7 +7,7 @@
 namespace ui = ftxui;
 
 /// @brief Obtain the global fullscreen interactive screen.
-inline ui::ScreenInteractive& Screen /* NOLINT(readability-identifier-naming) */ ()
+inline ui::ScreenInteractive& /* NOLINT(readability-identifier-naming) */ Screen()
 {
     static ui::ScreenInteractive screen = ui::ScreenInteractive::Fullscreen();
     return screen;

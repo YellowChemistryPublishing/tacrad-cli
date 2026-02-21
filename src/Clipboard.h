@@ -37,6 +37,7 @@
 namespace ui = ftxui;
 
 #if _libcxxext_os_windows
+
 /// @brief Set clipboard text on Windows.
 inline void setClipboardWin32(std::string_view str)
 {
@@ -47,7 +48,9 @@ inline void setClipboardWin32(std::string_view str)
     if (!EmptyClipboard())
         return;
 
-    HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, str.size() + 1);
+    sys::wstr uniStr(str);
+    const sz sizeBytes = (uniStr.size() + 1_uz) * sz(sizeof(wchar_t));
+    HGLOBAL hGlob = GlobalAlloc(GMEM_MOVEABLE, sizeBytes);
     if (!hGlob)
         return;
 
@@ -58,14 +61,15 @@ inline void setClipboardWin32(std::string_view str)
         return;
     }
 
-    std::memcpy(pData, str.data(), str.size()); // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    *(_as(char*, pData) + str.size()) = '\0';   // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    std::memcpy(pData, uniStr.data(), sizeBytes);    // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    *(_as(wchar_t*, pData) + uniStr.size()) = L'\0'; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
     while (GlobalUnlock(hGlob) != 0)
         _retif(, GetLastError() != NO_ERROR);
 
-    (void)SetClipboardData(CF_TEXT, hGlob); // If this fails there's nothing we can do anyways.
+    (void)SetClipboardData(CF_UNICODETEXT, hGlob); // If this fails there's nothing we can do anyways.
 }
+
 #endif
 
 /// @brief Create an event catcher that for handling Ctrl + C like clipboard copy.
