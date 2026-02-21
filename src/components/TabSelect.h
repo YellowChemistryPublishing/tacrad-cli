@@ -10,7 +10,7 @@
 #include <ftxui/screen/color.hpp>
 #include <ftxui/util/ref.hpp>
 #include <memory>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -25,13 +25,13 @@ namespace ui = ftxui;
 /// @note Pass `byptr`.
 class TabSelectImpl final : public ui::ComponentBase
 {
-    static inline const std::vector<std::string> TabValues = {
+    static inline const std::vector<std::string_view> TabValues = {
         "UI",
         "Console",
     };
 
     const std::shared_ptr<TabContainerImpl> containerComp;
-    ui::Component selectorComp = ui::Menu(&TabSelectImpl::TabValues, &*this->containerComp->selectedTab, []() -> ui::MenuOption
+    ui::Component selectorComp = ui::Menu(TabSelectImpl::TabValues, &*this->containerComp->selectedTab, []() -> ui::MenuOption
     {
         ui::MenuOption ret = ui::MenuOption::HorizontalAnimated();
         ret.underline.color_active = UserSettings::FlavorEmphasizedColor;

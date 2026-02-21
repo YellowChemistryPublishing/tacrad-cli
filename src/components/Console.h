@@ -10,13 +10,13 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
-#include <ftxui/util/ref.hpp>
 #include <span>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <CmdInv.inl>
 #include <Config.h>
@@ -33,7 +33,7 @@ public:
     // Command invocation (and output) history.
     std::vector<CmdInv::Entry> history; // NOLINT(misc-non-private-member-variables-in-classes)
 private:
-    std::vector<std::string> lastLines;
+    std::vector<sys::cstr> lastLines;
     sz linesSize = 0_uz;
     i32 lineWidth = 1_i32;
     i32 selected = 0_i32;
@@ -55,7 +55,7 @@ private:
         this->linesSize = this->lastLines.size();
         for (const auto& entry : std::span(this->history.begin() + *ssz(this->lastHistorySize), this->history.end()))
         {
-            const auto process = [&](const std::string& text)
+            const auto process = [&](const sys::cstr& text)
             {
                 if (text.empty())
                     return;
@@ -98,9 +98,9 @@ private:
             ret |= ui::dim;
         return ret;
     }
-    [[nodiscard]] ui::Component createEntry(std::string str)
+    [[nodiscard]] ui::Component createEntry(sys::cstr str)
     {
-        return ui::MenuEntry(std::move(str),
+        return ui::MenuEntry(_as(std::string_view, str),
                              ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element { return this->postProcessEntry(state); },
                                                    .animated_colors = ui::AnimatedColorsOption() });
     }

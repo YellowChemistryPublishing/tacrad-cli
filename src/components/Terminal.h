@@ -64,7 +64,8 @@ class TerminalImpl final : public ui::ComponentBase
                 if (!this->cmd.starts_with(Config::QuickActionKey) || this->cmd.size() <= 1uz)
                     return;
 
-                this->cmd = Config::QuickActionKey;
+                this->cmd.clear();
+                this->cmd.push_back(Config::QuickActionKey);
                 Screen().PostEvent(ui::Event::Custom);
             });
         }

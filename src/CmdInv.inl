@@ -55,45 +55,45 @@ public:
     /// @brief Holds the invocation and output of a command.
     struct Entry
     {
-        std::string cmd;
-        std::string output;
+        sys::cstr cmd;
+        sys::cstr output;
     };
 
     CmdInv() = delete;
 
     static void clearHistory(std::vector<Entry>& history) { history.clear(); }
-    static void pushCommand(std::vector<Entry>& history, std::string cmd) { history.emplace_back(Entry { .cmd = "$ " + std::move(cmd), .output = "" }); }
+    static void pushCommand(std::vector<Entry>& history, sys::cstr cmd) { history.emplace_back(Entry { .cmd = sys::cstr("$ ").append(cmd), .output = "" }); }
     template <typename... Args>
     static void println(std::vector<Entry>& history, std::format_string<Args...> fmt, Args&&... args)
     {
         if (history.empty())
             history.emplace_back(Entry { .cmd = "", .output = "" });
 
-        history.back().output.append(std::format(fmt, std::forward<Args>(args)...)).push_back('\n');
+        history.back().output.append(std::format(fmt, std::forward<Args>(args)...)).append('\n');
     }
 
-    static void help(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void clear(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void quit(std::vector<Entry>& history, const std::vector<std::string>& cmd);
+    static void help(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void clear(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void quit(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
 
-    static void togglePlayingOrPlay(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void resumeOrPlay(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void play(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void resume(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void pause(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void seek(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void volume(std::vector<Entry>& history, const std::vector<std::string>& cmd);
-    static void stop(std::vector<Entry>& history, const std::vector<std::string>&);
-    static void next(std::vector<Entry>& history, const std::vector<std::string>& cmd);
+    static void togglePlayingOrPlay(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void resumeOrPlay(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void play(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void resume(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void pause(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void seek(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void volume(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    static void stop(std::vector<Entry>& history, const std::vector<sys::cstr>&);
+    static void next(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
 private:
     struct Query
     {
         std::vector<std::set<std::string_view>> startsWith;
-        std::string usage;
-        std::string desc;
+        sys::cstr usage;
+        sys::cstr desc;
         bool exactCount = false;
     };
-    static inline const std::vector<std::pair<Query, void (*)(std::vector<Entry>&, const std::vector<std::string>&)>> ValidCommands {
+    static inline const std::vector<std::pair<Query, void (*)(std::vector<Entry>&, const std::vector<sys::cstr>&)>> ValidCommands {
         { Query { .startsWith = { { "p", ":p" } }, .usage = "1. `p`, 2. `p <track query>...`", .desc = "1. Toggle play/pause, 2. Alias for `play`.", .exactCount = false },
          &CmdInv::togglePlayingOrPlay                                                                                                                                                       },
         { Query { .startsWith = { { ">" } }, .usage = "1. `>`, 2. `> <track query>...`", .desc = "1. Alias for `resume`, 2. Alias for `play`.", .exactCount = false },
@@ -114,7 +114,7 @@ private:
 public:
     /// @brief Execute a command with its argv.
     /// @return Whether a command to execute was found.
-    [[nodiscard]] static bool matchExecuteCommand(std::vector<Entry>& history, const std::vector<std::string>& argv)
+    [[nodiscard]] static bool matchExecuteCommand(std::vector<Entry>& history, const std::vector<sys::cstr>& argv)
     {
         if (argv.empty())
             return false;

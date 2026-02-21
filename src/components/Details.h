@@ -8,7 +8,6 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -37,7 +36,7 @@ class DetailsImpl final : public ui::ComponentBase
         if (this->selectedTag == this->tagSelectorComp->selectedTag && this->selectedTrack == this->playlistComp->selectedTrack()) [[likely]]
             return this->cachedElement;
 
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(std::u8string(this->tagSelectorComp->selectedTag));
+        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(sys::str(this->tagSelectorComp->selectedTag));
         _retif(this->cachedElement = ui::text(Config::BlankText), this->playlistComp->selectedTrack() < 0_i32 || this->playlistComp->selectedTrack() >= playlist.size());
 
         const MusicPlayer::FoundMusic& track = playlist[sz(this->playlistComp->selectedTrack())];

@@ -8,6 +8,8 @@
 
 #include <module/sys>
 
+/// @brief Common error type for `tacrad-cli`.
+/// @note Holds a null-terminated `char` buffer of static storage duration.
 struct Error final
 {
 private:
@@ -29,6 +31,7 @@ public:
     static const Error TrackNotFound;
     static const Error TrackSeekOutOfRange;
 
+    /// @brief Create an `Error` from a C++ error category.
     static Error fromCategory(const std::error_category& cat)
     {
         if (cat == std::generic_category())
@@ -39,6 +42,7 @@ public:
             return Error("C++ iostream error.");
         return Error("Unknown C++ error.");
     }
+    /// @brief Create an `Error` from an `ma_result`.
     static Error fromAudioEngineResult(const ma_result res)
     {
         switch (res)

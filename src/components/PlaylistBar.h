@@ -8,11 +8,11 @@
 #include <ftxui/dom/node.hpp>
 #include <memory>
 #include <ranges> // NOLINT(misc-include-cleaner)
-#include <string>
 #include <utility>
 #include <vector>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Config.h>
 #include <Music.h>
@@ -34,7 +34,7 @@ class PlaylistBarImpl final : public ui::ComponentBase
             ? playlist[sz(this->playlistComp->selectedTrack())]
             : MusicPlayer::FoundMusic {};
 
-        reorderTracks(std::u8string(this->playlistComp->tagSelector()->selectedTag));
+        reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag));
 
         auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; }); // NOLINT(misc-include-cleaner)
         _retif(, foundIt == playlist.end());

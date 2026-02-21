@@ -5,7 +5,6 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>
-#include <string>
 
 #include <module/sys>
 
@@ -20,7 +19,6 @@
 #else
 
 #include <cstring>
-#include <string_view>
 
 #include <module/sys.Text>
 
@@ -41,7 +39,7 @@ namespace ui = ftxui;
 #if _libcxxext_os_windows
 
 /// @brief Set clipboard text on Windows.
-inline void setClipboardWin32(std::string_view str)
+inline void setClipboardWin32(sys::cstr str)
 {
     if (!OpenClipboard(nullptr))
         return;
@@ -81,7 +79,7 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Clipbo
     {
         if (event == ui::Event::CtrlC)
         {
-            if (const std::string selection = Screen().GetSelection(); !selection.empty())
+            if (const sys::cstr selection(Screen().GetSelection()); !selection.empty())
             {
 #if !_libcxxext_os_windows
                 std::cout << "\033]52;c;" << base64Encode(selection) << "\a" << std::flush;

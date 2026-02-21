@@ -24,7 +24,6 @@ _push_nowarn_c_cast();
 #include <random>
 #include <set>
 #include <stdexcept>
-#include <string>
 #include <string_view>
 #include <system_error>
 #include <taglib/fileref.h>
@@ -111,15 +110,15 @@ public:
         sys::str name = u8"";
         std::filesystem::path file;
 
-        std::string artistsDisplay = "unknown";
-        std::string tagsDisplay = "[none]";
+        sys::cstr artistsDisplay = "unknown";
+        sys::cstr tagsDisplay = "[none]";
 
         friend bool operator==(const FoundMusic&, const FoundMusic&) = default;
         friend auto operator<=>(const FoundMusic&, const FoundMusic&) = default;
     };
 private:
-    static inline std::map<std::u8string, std::vector<FoundMusic>> playlists;
-    static inline std::set<std::u8string> lastPlaylistReorderWasReshuffle;
+    static inline std::map<sys::str, std::vector<FoundMusic>> playlists;
+    static inline std::set<sys::str> lastPlaylistReorderWasReshuffle;
 public:
     MusicPlayer() = delete;
 
@@ -136,7 +135,7 @@ public:
         _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
         return MusicPlayer::audio->audioLen;
     }
-    _pure_const static std::string formatTime(float seconds)
+    _pure_const static sys::cstr formatTime(float seconds)
     {
         return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); // NOLINT(readability-magic-numbers)
     }
@@ -199,13 +198,13 @@ public:
         static const std::vector<FoundMusic> notFound;
         _retif(notFound, tag.empty());
 
-        if (auto it = MusicPlayer::playlists.find(std::u8string(tag)); it != MusicPlayer::playlists.end())
+        if (auto it = MusicPlayer::playlists.find(sys::str(tag)); it != MusicPlayer::playlists.end())
             return it->second;
 
         return notFound;
     }
     [[nodiscard]] static const std::vector<FoundMusic>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::playlistTag); }
-    [[nodiscard]] static const std::map<std::u8string, std::vector<FoundMusic>>& allPlaylists() { return MusicPlayer::playlists; }
+    [[nodiscard]] static const std::map<sys::str, std::vector<FoundMusic>>& allPlaylists() { return MusicPlayer::playlists; }
 
     static std::vector<std::error_code> searchForTracks()
     {
@@ -236,13 +235,13 @@ public:
                     sys::str ret= sys::str::join(as.artists, u8"; ");
                     if (!as.feats.empty())
                         ret.append(u8" ft. ").append(sys::str::join(as.feats, u8"; "));
-                    return _as(std::string, sys::cstr(ret));
+                    return _as(sys::cstr, sys::cstr(ret));
                 }()
-                                                                : std::string("unknown"),
-                                   .tagsDisplay = _as(std::string, _as(sys::cstr, sys::str::join(tags, u8"; "))) };
+                                                                : sys::cstr("unknown"),
+                                   .tagsDisplay = _as(sys::cstr, _as(sys::cstr, sys::str::join(tags, u8"; "))) };
 
                 for (const sys::str& tag : tags)
-                    MusicPlayer::playlists[std::u8string(tag)].emplace_back(track);
+                    MusicPlayer::playlists[sys::str(tag)].emplace_back(track);
             }
             if (ec)
             {
@@ -267,7 +266,7 @@ public:
 
     /// @brief Rearranges current playlist with reordering function.
     /// @return Whether the playlist existed to rearrange.
-    [[nodiscard]] static bool rearrangeCurrentPlaylist(auto&& reorder, std::u8string tag)
+    [[nodiscard]] static bool rearrangeCurrentPlaylist(auto&& reorder, sys::str tag)
     {
         auto it = MusicPlayer::playlists.find(tag);
         _retif(false, it == MusicPlayer::playlists.end());
@@ -284,26 +283,26 @@ public:
         MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
         return true;
     }
-    [[nodiscard]] static bool shufflePlaylist(std::u8string tag)
+    [[nodiscard]] static bool shufflePlaylist(sys::str tag)
     {
-        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, std::u8string tag)
+        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
         {
             std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
             if (MusicPlayer::playlists.contains(tag))
                 MusicPlayer::lastPlaylistReorderWasReshuffle.insert(std::move(tag));
         }, std::move(tag));
     }
-    [[nodiscard]] static bool sortPlaylistLexicographically(std::u8string tag)
+    [[nodiscard]] static bool sortPlaylistLexicographically(sys::str tag)
     {
-        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, std::u8string tag)
+        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
         {
             std::ranges::sort(playlist);
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
         }, std::move(tag));
     }
-    [[nodiscard]] static bool sortPlaylistReverseLexicographically(std::u8string tag)
+    [[nodiscard]] static bool sortPlaylistReverseLexicographically(sys::str tag)
     {
-        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, std::u8string tag)
+        return MusicPlayer::rearrangeCurrentPlaylist([](std::vector<FoundMusic>& playlist, sys::str tag)
         {
             std::ranges::sort(playlist, std::greater<>());
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
@@ -457,7 +456,7 @@ public:
             MusicPlayer::currentTrack = 0_i32;
             _retif(Error::PlaylistEmpty, playlist.empty());
 
-            const std::u8string tag(MusicPlayer::playlistTag);
+            const sys::str tag(MusicPlayer::playlistTag);
             if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(tag) && !MusicPlayer::shufflePlaylist(tag))
             {
                 MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);

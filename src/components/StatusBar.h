@@ -16,7 +16,6 @@
 #include <memory>
 #include <mutex>
 #include <stop_token>
-#include <string>
 #include <string_view>
 #include <thread>
 #include <utility>
@@ -41,7 +40,7 @@ namespace ui = ftxui;
 /// Pass `byptr`.
 class StatusBarImpl final : public ui::ComponentBase
 {
-    std::string message;
+    sys::cstr message;
     std::chrono::steady_clock::time_point messageExpiry = std::chrono::steady_clock::time_point::min();
     std::mutex messageLock;
     std::condition_variable_any messageCv;
@@ -200,7 +199,7 @@ public:
 
     /// @brief Show a temporary message on the status bar.
     /// @param msg The message to display (which will auto-clear after `Config::StatusBarMessageDelay` seconds).
-    void showMessage(std::string msg)
+    void showMessage(sys::cstr msg)
     {
         const std::unique_lock guard(this->messageLock);
         this->message = std::move(msg);
@@ -223,7 +222,7 @@ public:
         const std::vector<CmdInv::Entry>& history = this->consoleComp->history;
         _retif(false, history.empty());
 
-        const std::string& output = history.back().output;
+        const sys::cstr& output = history.back().output;
         if (output.empty())
         {
             this->clearMessage();
@@ -235,7 +234,7 @@ public:
             v.pop_back();
 
         if (!v.empty()) [[likely]]
-            this->showMessage(std::string(v.back().trim()));
+            this->showMessage(sys::cstr(v.back().trim()));
 
         return true;
     }

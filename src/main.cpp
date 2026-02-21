@@ -11,6 +11,7 @@
 #include <utility>
 
 #include <Clipboard.h>
+#include <CmdInv.h> // NOLINT(misc-include-cleaner): Need function definitions.
 #include <Debug.h>
 #include <Screen.h>
 #include <Style.h>

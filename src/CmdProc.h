@@ -5,7 +5,6 @@
 #include <iterator>
 #include <memory>
 #include <span>
-#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -26,9 +25,9 @@ class CmdProc final
 public:
     CmdProc() = delete;
 
-    [[nodiscard]] static std::vector<std::string> argvParse(std::string_view cmd)
+    [[nodiscard]] static std::vector<sys::cstr> argvParse(std::string_view cmd)
     {
-        std::vector<std::string> argv;
+        std::vector<sys::cstr> argv;
         bool ignoreSpaces = false;
         for (auto it = cmd.begin(); it != cmd.end();) // NOLINT(readability-qualified-auto)
         {
@@ -37,24 +36,24 @@ public:
             if (it == cmd.end())
                 break;
 
-            std::string arg;
+            sys::cstr arg;
             while (it != cmd.end() && (ignoreSpaces || !std::isspace(*it)))
             {
                 if (*it == '\\')
                 {
                     const auto next = std::next(it); // NOLINT(readability-qualified-auto)
                     if (next == cmd.end() || (*next != ' ' && *next != '\\' && *next != '"'))
-                        arg.push_back('\\');
+                        arg.append('\\');
                     else
                     {
-                        arg.push_back(*next);
+                        arg.append(*next);
                         ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     }
                 }
                 else if (*it == '"')
                     ignoreSpaces = !ignoreSpaces;
                 else
-                    arg.push_back(*it);
+                    arg.append(*it);
 
                 ++it; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             }
@@ -67,9 +66,9 @@ public:
         return argv;
     }
 
-    static void invoke(std::vector<CmdInv::Entry>& history, std::string cmd, std::weak_ptr<StatusBarImpl> statusBarPtr = {})
+    static void invoke(std::vector<CmdInv::Entry>& history, sys::cstr cmd, std::weak_ptr<StatusBarImpl> statusBarPtr = {})
     {
-        const std::vector<std::string> argv = CmdProc::argvParse(cmd);
+        const std::vector<sys::cstr> argv = CmdProc::argvParse(cmd);
         if (argv.empty())
             return;
 

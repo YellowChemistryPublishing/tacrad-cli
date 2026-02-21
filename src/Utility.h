@@ -4,7 +4,6 @@
 #include <memory>
 #include <set>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -14,7 +13,7 @@
 namespace ui = ftxui;
 
 /// @brief Split a string by a delimiter, or until a maximum line length is reached.
-constexpr void stringSplitLengthConstrained(const std::string_view str, const sz len, std::vector<std::string>& out)
+constexpr void stringSplitLengthConstrained(const std::string_view str, const sz len, std::vector<sys::cstr>& out)
 {
     const sys::str32_view v = std::span(str);
     for (auto it = v.begin(); it < v.end();)
@@ -33,7 +32,7 @@ constexpr void stringSplitLengthConstrained(const std::string_view str, const sz
 }
 
 /// @brief Truncate a string, adding ellipses if trimmed.
-[[nodiscard]] _pure_const constexpr std::string truncateStrForDisplay(const std::string_view str, const ui::Box& bounds)
+[[nodiscard]] _pure_const constexpr sys::cstr truncateStrForDisplay(const std::string_view str, const ui::Box& bounds)
 {
     u64 ccount = 0_u64;
     ssz trimFrom = 0_z;
@@ -50,16 +49,16 @@ constexpr void stringSplitLengthConstrained(const std::string_view str, const sz
 
     if (trimFrom < str.size() && trimFrom > 0_z) // Trimming a tiny string to `...` is worthless.
     {
-        std::string ret(str.substr(0, sz(trimFrom)));
+        sys::cstr ret(str.substr(0, sz(trimFrom)));
         ret.append("...");
         return ret;
     }
 
-    return std::string(str);
+    return sys::cstr(str);
 }
 
 /// @brief Match a string vector against a stringset vector.
-[[nodiscard]] _pure_const constexpr bool setVecStartsWith(const std::vector<std::set<std::string_view>>& setVec, const std::vector<std::string>& with)
+[[nodiscard]] _pure_const constexpr bool setVecStartsWith(const std::vector<std::set<std::string_view>>& setVec, const std::vector<sys::cstr>& with)
 {
     sz i = 0_uz;
     for (const auto& tokenSet : setVec)
@@ -72,10 +71,10 @@ constexpr void stringSplitLengthConstrained(const std::string_view str, const sz
 }
 
 /// @brief Base64 encode a string for OSC 52 clipboard.
-[[nodiscard]] _pure_const constexpr std::string base64Encode(std::u8string_view input)
+[[nodiscard]] _pure_const constexpr sys::cstr base64Encode(std::u8string_view input)
 {
     static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string ret;
+    sys::cstr ret;
     ret.reserve(((input.size() + 2) / 3) * 4); // NOLINT(readability-magic-numbers)
 
     for (sz i = 0_uz; i < input.size(); i += 3_uz) // NOLINT(readability-magic-numbers)
@@ -87,10 +86,10 @@ constexpr void stringSplitLengthConstrained(const std::string_view str, const sz
             n |= u32(_as(byte, input[i + 2]));
 
         // NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-pro-bounds-constant-array-index)
-        ret.append(1, table[(n >> 18_u32) & 0x3F_u32])
-            .append(1, table[(n >> 12_u32) & 0x3F_u32])
-            .append(1, (i + 1 < input.size()) ? table[(n >> 6_u32) & 0x3F_u32] : '=')
-            .append(1, (i + 2 < input.size()) ? table[n & 0x3F_u32] : '=');
+        ret.append(table[(n >> 18_u32) & 0x3F_u32])
+            .append(table[(n >> 12_u32) & 0x3F_u32])
+            .append(i + 1 < input.size() ? table[(n >> 6_u32) & 0x3F_u32] : '=')
+            .append(i + 2 < input.size() ? table[n & 0x3F_u32] : '=');
         // NOLINTEND(readability-magic-numbers,cppcoreguidelines-pro-bounds-constant-array-index)
     }
 
