@@ -9,16 +9,18 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
+#include <memory>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <CmdInv.inl>
 #include <Config.h>
 #include <Music.h>
 #include <Style.h>
-#include <Utility.h>
 #include <components/Console.h>
 #include <components/TagSelector.h>
 
@@ -26,7 +28,7 @@ namespace ui = ftxui;
 
 /// @brief Displays tracks within the currently selected playlist.
 /// @note Pass `byptr`.
-class PlaylistImpl : public ui::ComponentBase
+class PlaylistImpl final : public ui::ComponentBase
 {
     std::shared_ptr<TagSelectorImpl> tagSelComp;
     std::shared_ptr<ConsoleImpl> consoleComp;
@@ -40,10 +42,13 @@ class PlaylistImpl : public ui::ComponentBase
     {
         MusicPlayer::playlistTag = this->tagSelComp->selectedTag;
         MusicPlayer::currentTrack = this->selected;
-        if (!MusicPlayer::stopMusic())
-            CmdInv::println(this->consoleComp->history, "[log.warn] Failed to stop music.");
-        if (!MusicPlayer::play() || !MusicPlayer::resume())
-            CmdInv::println(this->consoleComp->history, "[log.error] Failed to play track.");
+
+        _retif(CmdInv::println(this->consoleComp->history, "[log.warn] Failed to stop music. ({})", _as(std::string_view, stopRes.err())), auto stopRes = MusicPlayer::stopMusic();
+               !stopRes);
+
+        auto playRes = MusicPlayer::play();
+        if (!playRes || !(playRes = MusicPlayer::resume())) // NOLINT(bugprone-assignment-in-if-condition)
+            CmdInv::println(this->consoleComp->history, "[log.error] Failed to play track. ({})", _as(std::string_view, playRes.err()));
     }
 
     void syncIfNeeded()

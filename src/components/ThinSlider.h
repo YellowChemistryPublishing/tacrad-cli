@@ -1,15 +1,10 @@
 #pragma once
 
-#include <Debug.h>
-#include <functional>
-#pragma once
-
 #include <algorithm>
-#include <format>
+#include <cmath>
 #include <ftxui/component/captured_mouse.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
-#include <ftxui/component/component_options.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
 #include <ftxui/component/mouse.hpp>
@@ -18,20 +13,17 @@
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
 #include <ftxui/screen/color.hpp>
-#include <ftxui/util/ref.hpp>
+#include <functional>
+#include <utility>
 
 #include <module/sys>
-#include <module/sys.Text>
 
-#include <CmdInv.inl>
 #include <Config.h>
-#include <Screen.h>
-#include <Style.h>
 
 namespace ui = ftxui;
 
 /// @brief Displays a thin, interactable slider.
-class ThinSliderImpl : public ui::ComponentBase
+class ThinSliderImpl final : public ui::ComponentBase
 {
     std::function<void(float)> onChange;
     std::function<void(float&)> onDraw;

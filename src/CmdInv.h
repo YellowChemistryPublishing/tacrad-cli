@@ -62,11 +62,11 @@ inline void CmdInv::togglePlayingOrPlay(std::vector<CmdInv::Entry>& history, con
     {
         if (MusicPlayer::playing())
         {
-            if (!MusicPlayer::pause())
-                CmdInv::println(history, "[log.error] Failed to pause track.");
+            if (auto pauseRes = MusicPlayer::pause(); !pauseRes)
+                CmdInv::println(history, "[log.error] Failed to pause track: {}", _as(std::string_view, pauseRes.err()));
         }
-        else if (!MusicPlayer::resume())
-            CmdInv::println(history, "[log.error] Failed to resume track.");
+        else if (auto resRes = MusicPlayer::resume(); !resRes)
+            CmdInv::println(history, "[log.error] Failed to resume track: {}", _as(std::string_view, resRes.err()));
     }
     else
         CmdInv::play(history, cmd);
@@ -75,8 +75,8 @@ inline void CmdInv::resumeOrPlay(std::vector<CmdInv::Entry>& history, const std:
 {
     if (cmd.size() == 1 && !MusicPlayer::playing())
     {
-        if (!MusicPlayer::resume())
-            CmdInv::println(history, "[log.error] Failed to resume track.");
+        if (auto resRes = MusicPlayer::resume(); !resRes)
+            CmdInv::println(history, "[log.error] Failed to resume track: {}", _as(std::string_view, resRes.err()));
     }
     else
         CmdInv::play(history, cmd);
@@ -84,20 +84,26 @@ inline void CmdInv::resumeOrPlay(std::vector<CmdInv::Entry>& history, const std:
 inline void CmdInv::play(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
     _retif(CmdInv::println(history, R"([log.error] Track title argument must be given to "play"!")"), cmd.size() < 2);
-    _retif(CmdInv::println(history, "[log.error] Failed to stop track."), !MusicPlayer::stopMusic());
+    _retif(CmdInv::println(history, "[log.error] Failed to stop track. ({})", _as(std::string_view, stopRes.err())), auto stopRes = MusicPlayer::stopMusic(); !stopRes);
 
-    sys::cstr lookupName = sys::cstr::join(std::span(std::next(cmd.begin(), 1), cmd.end()), ' ');
-    _retif(CmdInv::println(history, "[log.error] Failed to start track."), !MusicPlayer::queryStartMusic(sys::str(_as(std::string_view, lookupName))));
+    const sys::cstr lookupName = sys::cstr::join(std::span(std::next(cmd.begin(), 1), cmd.end()), ' ');
+    _retif(CmdInv::println(history, "[log.error] Failed to start track. ({})", _as(std::string_view, startRes.err())),
+           auto startRes = MusicPlayer::queryStartMusic(sys::str(_as(std::string_view, lookupName)));
+           !startRes);
 }
 inline void CmdInv::resume(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
     _retif(CmdInv::println(history, R"([log.error] "resume" takes no arguments!)"), cmd.size() > 1);
-    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)"), !MusicPlayer::resume());
+    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media. ({}))", _as(std::string_view, resRes.err())),
+           auto resRes = MusicPlayer::resume();
+           !resRes);
 }
 inline void CmdInv::pause(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
     _retif(CmdInv::println(history, R"([log.error] "pause" takes no arguments!)"), cmd.size() > 1);
-    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media.)"), !MusicPlayer::pause());
+    _retif(CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" and "stop" to change media. ({}))", _as(std::string_view, pauseRes.err())),
+           auto pauseRes = MusicPlayer::pause();
+           !pauseRes);
 }
 inline void CmdInv::seek(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
@@ -108,7 +114,7 @@ inline void CmdInv::seek(std::vector<CmdInv::Entry>& history, const std::vector<
     char* readEnd = nullptr; // NOLINT(misc-const-correctness)
     const float q = std::strtof(cmd[1].c_str(), &readEnd);
     _retif(CmdInv::println(history, R"([log.error] Invalid index argument given to "seek"!)"), readEnd - cmd[1].data() != _as(ptrdiff_t, cmd[1].size()));
-    _retif(CmdInv::println(history, "[log.error] Failed to seek track."), !MusicPlayer::seek(q));
+    _retif(CmdInv::println(history, "[log.error] Failed to seek track. ({})", _as(std::string_view, seekRes.err())), auto seekRes = MusicPlayer::seek(q); !seekRes);
 }
 inline void CmdInv::volume(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
@@ -117,17 +123,17 @@ inline void CmdInv::volume(std::vector<CmdInv::Entry>& history, const std::vecto
 
     float v = 1.0f; // NOLINT(misc-const-correctness)
     std::istringstream(cmd[1]) >> v;
-    _retif(CmdInv::println(history, "[log.error] Failed to set volume."), !MusicPlayer::volume(v));
+    _retif(CmdInv::println(history, "[log.error] Failed to set volume. ({})", _as(std::string_view, volRes.err())), auto volRes = MusicPlayer::volume(v); !volRes);
 }
 inline void CmdInv::stop(std::vector<CmdInv::Entry>& history, const std::vector<std::string>&)
 {
     if (MusicPlayer::loaded())
-        _retif(CmdInv::println(history, "[log.error] Failed to stop track."), !MusicPlayer::stopMusic());
+        _retif(CmdInv::println(history, "[log.error] Failed to stop track. ({})", _as(std::string_view, stopRes.err())), auto stopRes = MusicPlayer::stopMusic(); !stopRes);
     else
         CmdInv::println(history, R"([log.error] Not currently playing music! Use "play" to start media.)");
 }
 inline void CmdInv::next(std::vector<CmdInv::Entry>& history, const std::vector<std::string>& cmd)
 {
     _retif(CmdInv::println(history, R"([log.error] Extra arguments given to "next"!)"), cmd.size() > 1);
-    _retif(CmdInv::println(history, "[log.error] Failed to play next track."), !MusicPlayer::next());
+    _retif(CmdInv::println(history, "[log.error] Failed to play next track. ({})", _as(std::string_view, nextRes.err())), auto nextRes = MusicPlayer::next(); !nextRes);
 }

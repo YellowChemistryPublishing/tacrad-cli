@@ -2,21 +2,21 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
-#include <ftxui/component/component_options.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
-#include <ftxui/screen/box.hpp>
+#include <memory>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <Config.h>
 #include <Music.h>
-#include <Style.h>
-#include <Utility.h>
 #include <components/Playlist.h>
 #include <components/TagSelector.h>
 
@@ -24,7 +24,7 @@ namespace ui = ftxui;
 
 /// @brief Displays information about the selected track.
 /// @note Pass `byptr`.
-class DetailsImpl : public ui::ComponentBase
+class DetailsImpl final : public ui::ComponentBase
 {
     std::shared_ptr<TagSelectorImpl> tagSelectorComp;
     std::shared_ptr<PlaylistImpl> playlistComp;

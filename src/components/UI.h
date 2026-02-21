@@ -8,11 +8,13 @@
 #include <ftxui/dom/direction.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <memory>
+#include <utility>
 
 #include <module/sys>
 
 #include <Config.h>
 #include <Style.h>
+#include <components/Console.h>
 #include <components/Details.h>
 #include <components/Playlist.h>
 #include <components/PlaylistBar.h>
@@ -23,7 +25,7 @@ namespace ui = ftxui;
 
 /// @brief Displays the primary view for playing music.
 /// @note Pass `byptr`.
-class UIImpl : public ui::ComponentBase
+class UIImpl final : public ui::ComponentBase
 {
     i32 leftSize = UserSettings::TagSelectPanelInitWidth;
     i32 rightSize = UserSettings::DetailsPanelInitWidth;

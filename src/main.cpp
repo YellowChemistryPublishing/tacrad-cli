@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <Clipboard.h>
-#include <CmdInv.h>
 #include <Debug.h>
 #include <Screen.h>
 #include <Style.h>

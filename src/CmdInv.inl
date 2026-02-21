@@ -49,7 +49,7 @@
 
 /// @brief Command invocation functions.
 /// @note Static class.
-class CmdInv
+class CmdInv final // NOLINT(misc-use-internal-linkage): Spurious.
 {
 public:
     /// @brief Holds the invocation and output of a command.

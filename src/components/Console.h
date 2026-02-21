@@ -27,7 +27,7 @@ namespace ui = ftxui;
 
 /// @brief Displays command history and output.
 /// @note Pass `byptr`.
-class ConsoleImpl : public ui::ComponentBase
+class ConsoleImpl final : public ui::ComponentBase
 {
 public:
     // Command invocation (and output) history.

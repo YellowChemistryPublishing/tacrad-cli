@@ -25,7 +25,6 @@
 
 #include <module/sys>
 
-#include <CmdInv.h>
 #include <CmdProc.h>
 #include <Config.h>
 #include <Screen.h>
@@ -36,7 +35,7 @@ namespace ui = ftxui;
 
 /// @brief Displays command input bar with blinking cursor.
 /// @note Pass `byptr`.
-class TerminalImpl : public ui::ComponentBase
+class TerminalImpl final : public ui::ComponentBase
 {
     std::string cmd;
 

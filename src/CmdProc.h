@@ -15,6 +15,7 @@
 
 #include <CmdInv.inl>
 #include <Config.h>
+#include <Debug.h>
 #include <Music.h>
 #include <components/StatusBar.h>
 
@@ -25,7 +26,7 @@ class CmdProc final
 public:
     CmdProc() = delete;
 
-    static std::vector<std::string> argvParse(std::string_view cmd)
+    [[nodiscard]] static std::vector<std::string> argvParse(std::string_view cmd)
     {
         std::vector<std::string> argv;
         bool ignoreSpaces = false;

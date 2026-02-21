@@ -9,21 +9,23 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
-#include <utility>
+#include <map>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <module/sys>
 #include <module/sys.Text>
 
+#include <Config.h>
 #include <Music.h>
 #include <Style.h>
-#include <Utility.h>
 
 namespace ui = ftxui;
 
 /// @brief Displays a banner for playlist selection.
 /// @note Pass `byptr`.
-class TagSelectorImpl : public ui::ComponentBase
+class TagSelectorImpl final : public ui::ComponentBase
 {
     std::map<std::u8string, std::vector<MusicPlayer::FoundMusic>> playlists;
     std::vector<sys::str> tagNames;

@@ -22,6 +22,8 @@
 #include <cstring>
 #include <string_view>
 
+#include <module/sys.Text>
+
 #undef NOMINMAX
 #define NOMINMAX 1 // NOLINT(readability-identifier-naming)
 #undef WIN32_LEAN_AND_MEAN

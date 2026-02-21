@@ -13,7 +13,7 @@ namespace ui = ftxui;
 
 /// @brief Container for different UI views.
 /// @note Pass `byptr`.
-class TabContainerImpl : public ui::ComponentBase
+class TabContainerImpl final : public ui::ComponentBase
 {
 public:
     // Currently selected tab index.

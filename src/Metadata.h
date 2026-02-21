@@ -1,32 +1,20 @@
 #pragma once
 
 #include <StringEx.h>
-#include <mp4/mp4item.h>
 #include <string_view>
 #include <taglib/fileref.h>
 #include <taglib/flac/flacfile.h>
 #include <taglib/flacfile.h>
-#include <taglib/id3v2tag.h>
-#include <taglib/mp4/mp4file.h>
-#include <taglib/mp4file.h>
-#include <taglib/mp4tag.h>
-#include <taglib/mpeg/id3v2/frames/textidentificationframe.h>
-#include <taglib/mpeg/id3v2/id3v2tag.h>
-#include <taglib/mpeg/mpegfile.h>
-#include <taglib/mpegfile.h>
-#include <taglib/ogg/xiphcomment.h>
 #include <taglib/tag.h>
-#include <taglib/xiphcomment.h>
+#include <utility>
 #include <vector>
 
 #include <module/sys>
 #include <module/sys.Text>
 
-#include <NativeString.h>
-
 /// @brief Track metadata functions.
 /// @note Static class.
-class TrackMetadata
+class TrackMetadata final
 {
 public:
     TrackMetadata() = delete;
@@ -40,7 +28,7 @@ public:
     static sys::result<TrackArtists> readArtists(const TagLib::FileRef& f)
     {
         _retif(nullptr, f.isNull() || !f.tag());
-        sys::str artists(f.tag()->artist().to8Bit(true));
+        const sys::str artists(f.tag()->artist().to8Bit(true));
 
         const auto prefixLen = [](const std::u8string_view s) -> sz
         {

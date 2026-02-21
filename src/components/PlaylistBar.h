@@ -6,24 +6,24 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
-#include <ftxui/screen/box.hpp>
-#include <ftxui/util/ref.hpp>
 #include <memory>
+#include <ranges> // NOLINT(misc-include-cleaner)
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <module/sys>
 
-#include <CmdInv.inl>
 #include <Config.h>
 #include <Music.h>
 #include <Style.h>
-#include <Utility.h>
 #include <components/Playlist.h>
 
 namespace ui = ftxui;
 
 /// @brief Displays playlist interation functions.
 /// @note Pass `byptr`.
-class PlaylistBarImpl : public ui::ComponentBase
+class PlaylistBarImpl final : public ui::ComponentBase
 {
     std::shared_ptr<PlaylistImpl> playlistComp;
 
@@ -36,7 +36,7 @@ class PlaylistBarImpl : public ui::ComponentBase
 
         reorderTracks(std::u8string(this->playlistComp->tagSelector()->selectedTag));
 
-        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; });
+        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; }); // NOLINT(misc-include-cleaner)
         _retif(, foundIt == playlist.end());
 
         this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.

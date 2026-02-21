@@ -5,11 +5,13 @@
 #include <ftxui/screen/color.hpp>
 #include <string_view>
 
+#include <module/sys>
+
 namespace ui = ftxui;
 
 /// @brief Global static configuration.
 /// @note Static class.
-class Config
+class Config final
 {
 public:
     Config() = delete;
@@ -33,7 +35,7 @@ public:
 
 /// @brief User settings that can be modified at runtime.
 /// @note Static class.
-class UserSettings
+class UserSettings final
 {
 public:
     UserSettings() = delete;

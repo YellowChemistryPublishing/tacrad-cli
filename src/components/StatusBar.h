@@ -3,22 +3,21 @@
 #include <chrono>
 #include <condition_variable>
 #include <format>
-#include <ftxui/component/captured_mouse.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
-#include <ftxui/component/mouse.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
-#include <ftxui/screen/box.hpp>
 #include <ftxui/screen/color.hpp>
 #include <ftxui/util/ref.hpp>
+#include <memory>
 #include <mutex>
 #include <stop_token>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -40,7 +39,7 @@ namespace ui = ftxui;
 /// @note
 /// Displays the last command output for `Config::StatusBarMessageDelay`, then reverts to track info.
 /// Pass `byptr`.
-class StatusBarImpl : public ui::ComponentBase
+class StatusBarImpl final : public ui::ComponentBase
 {
     std::string message;
     std::chrono::steady_clock::time_point messageExpiry = std::chrono::steady_clock::time_point::min();
@@ -92,20 +91,23 @@ class StatusBarImpl : public ui::ComponentBase
     {
         if (MusicPlayer::playing())
         {
-            if (!MusicPlayer::pause())
-                CmdInv::println(this->consoleComp->history, "[log.error] Failed to pause track.");
+            _retif(CmdInv::println(this->consoleComp->history, "[log.error] Failed to pause track. ({})", _as(std::string_view, pauseRes.err())),
+                   auto pauseRes = MusicPlayer::pause();
+                   !pauseRes);
             return;
         }
 
         if (MusicPlayer::loaded())
         {
-            if (!MusicPlayer::resume())
-                CmdInv::println(this->consoleComp->history, "[log.error] Failed to resume track.");
+            _retif(CmdInv::println(this->consoleComp->history, "[log.error] Failed to resume track. ({})", _as(std::string_view, resRes.err())),
+                   auto resRes = MusicPlayer::resume();
+                   !resRes);
             return;
         }
 
-        if (!MusicPlayer::play() || !MusicPlayer::resume())
-            CmdInv::println(this->consoleComp->history, "[log.error] Failed to play track.");
+        auto playRes = MusicPlayer::play();
+        if (!playRes || !(playRes = MusicPlayer::resume())) // NOLINT(bugprone-assignment-in-if-condition)
+            CmdInv::println(this->consoleComp->history, "[log.error] Failed to play track. ({})", _as(std::string_view, playRes.err()));
     },
                                               ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element
     { return postProcessIconButton(MusicPlayer::playing() ? ui::text(UserSettings::PauseButtonLabel) : ui::text(UserSettings::PlayButtonLabel), state); },
@@ -119,16 +121,15 @@ class StatusBarImpl : public ui::ComponentBase
                    ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(UserSettings::NextButtonLabel), state); },
                                       .animated_colors {} });
     ui::Component volumeButtonComp = ui::Button("VolumeToggle",
-                                                []
+                                                [this]
     {
         static float volumeResetTo = 0.0f;
-        if (MusicPlayer::volume() == 0.0f)
-            (void)MusicPlayer::volume(volumeResetTo);
-        else
-        {
-            volumeResetTo = MusicPlayer::volume();
-            (void)MusicPlayer::volume(0.0f);
-        }
+        const float curVol = MusicPlayer::volume();
+        if (curVol != 0.0f)
+            volumeResetTo = curVol;
+
+        if (auto volRes = MusicPlayer::volume(curVol == 0.0f ? volumeResetTo : 0.0f); !volRes)
+            CmdInv::println(this->consoleComp->history, "[log.error] Failed to set volume. ({})", _as(std::string_view, volRes.err()));
     },
                                                 ui::ButtonOption { .transform = [](const ui::EntryState& state) -> ui::Element
     {
@@ -145,14 +146,18 @@ class StatusBarImpl : public ui::ComponentBase
             ui::color(UserSettings::FlavorUnemphasizedColor);
     },
                                                                    .animated_colors {} });
-    ui::Component volumeSliderComp = ThinSlider([](const float value) { (void)MusicPlayer::volume(value); }, [](float& val) { val = MusicPlayer::volume(); },
-                                                ui::size(ui::WIDTH, ui::EQUAL, Config::VolumeSliderWidth));
+    ui::Component volumeSliderComp = ThinSlider([this](const float value)
+    {
+        if (auto volRes = MusicPlayer::volume(value); !volRes)
+            CmdInv::println(this->consoleComp->history, "[log.error] Failed to set volume. ({})", _as(std::string_view, volRes.err()));
+    }, [](float& val) { val = MusicPlayer::volume(); }, ui::size(ui::WIDTH, ui::EQUAL, Config::VolumeSliderWidth));
     ui::Component progressSliderComp = ThinSlider(
                                            [this](const float value)
     {
         if (MusicPlayer::loaded())
-            if (!MusicPlayer::seek(value * MusicPlayer::totalTime().move_or(0.0f)))
-                CmdInv::println(this->consoleComp->history, "[log.error] Failed to seek track.");
+            _retif(CmdInv::println(this->consoleComp->history, "[log.error] Failed to seek track. ({})", _as(std::string_view, seekRes.err())),
+                   auto seekRes = MusicPlayer::seek(value * MusicPlayer::totalTime().move_or(0.0f));
+                   !seekRes);
     },
                                            [](float& val)
     {

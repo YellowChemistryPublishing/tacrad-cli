@@ -23,7 +23,7 @@ namespace ui = ftxui;
 
 /// @brief Tab selector banner for different UI views.
 /// @note Pass `byptr`.
-class TabSelectImpl : public ui::ComponentBase
+class TabSelectImpl final : public ui::ComponentBase
 {
     static inline const std::vector<std::string> TabValues = {
         "UI",
