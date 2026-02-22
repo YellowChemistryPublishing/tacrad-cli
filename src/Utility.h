@@ -71,7 +71,7 @@ constexpr void stringSplitLengthConstrained(const std::string_view str, const sz
 }
 
 /// @brief Base64 encode a string for OSC 52 clipboard.
-[[nodiscard]] _pure_const constexpr sys::cstr base64Encode(std::u8string_view input)
+[[nodiscard]] _pure_const constexpr sys::cstr base64Encode(std::string_view input)
 {
     static constexpr char table[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     sys::cstr ret;

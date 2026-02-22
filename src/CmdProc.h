@@ -74,7 +74,10 @@ public:
 
         CmdInv::pushCommand(history, std::move(cmd));
         if (!CmdInv::matchExecuteCommand(history, argv))
-            CmdInv::println(history, "[log.error] Unrecognized command `{}` with args {}.", argv.front(), std::span(argv).subspan(1));
+        {
+            CmdInv::println(history, "[log.error] Unrecognized command `{}` with {}.", argv.front(),
+                            argv.size() > 1uz ? sys::cstr(R"(args: ")").append(sys::cstr::join(std::span(argv).subspan(1), R"(", ")")).append('"') : sys::cstr("no args"));
+        }
 
         if (const std::shared_ptr<StatusBarImpl> statusBar = statusBarPtr.lock())
             if (!statusBar->showLastCommandOutput())

@@ -24,6 +24,7 @@
 #include <utility>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <CmdProc.h>
 #include <Config.h>

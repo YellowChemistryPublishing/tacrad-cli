@@ -74,6 +74,7 @@ target_link_libraries(tacrad PRIVATE
     sys.BuildSupport.CompilerOptions sys.BuildSupport.WarningsAsErrors sys.BuildSupport.stdc++inc
     sys sys.Text
     screen dom component miniaudio taglib
+    $<$<AND:$<PLATFORM_ID:Linux>,$<EQUAL:${CMAKE_SIZEOF_VOID_P},4>>:atomic>
 )
 
 target_lint_clang_tidy(tacrad "-header-filter=src/.*" ${TACRAD_HEADERS})

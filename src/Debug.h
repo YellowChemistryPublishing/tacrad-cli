@@ -1,5 +1,7 @@
 #pragma once
 
+// NOLINTBEGIN(portability-template-virtual-member-function, hicpp-signed-bitwise)
+
 #include <cassert>
 #include <chrono>
 #include <cstdlib>
@@ -52,3 +54,5 @@ inline void wdebugLog(std::wformat_string<Args...> fmt, Args&&... args /* NOLINT
 {
     _impl_debug_log(std::wofstream);
 }
+
+// NOLINTEND(portability-template-virtual-member-function, hicpp-signed-bitwise)

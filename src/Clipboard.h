@@ -7,12 +7,14 @@
 #include <ftxui/component/screen_interactive.hpp>
 
 #include <module/sys>
+#include <module/sys.Text>
 
 #include <Screen.h>
 
 #if !_libcxxext_os_windows
 
 #include <iostream>
+#include <string_view>
 
 #include <Utility.h>
 
@@ -20,13 +22,11 @@
 
 #include <cstring>
 
-#include <module/sys.Text>
-
-#undef NOMINMAX
+#undef NOMINMAX    // NOLINT(misc-include-cleaner)
 #define NOMINMAX 1 // NOLINT(readability-identifier-naming)
 #undef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1 // NOLINT(readability-identifier-naming)
-#include <Windows.h>
+#include <Windows.h>          // NOLINT(misc-include-cleaner)
 
 #include <Errhandlingapi.h>
 #include <Minwindef.h>
@@ -37,6 +37,8 @@
 namespace ui = ftxui;
 
 #if _libcxxext_os_windows
+
+// NOLINTBEGIN(misc-include-cleaner)
 
 /// @brief Set clipboard text on Windows.
 inline void setClipboardWin32(sys::cstr str)
@@ -70,6 +72,8 @@ inline void setClipboardWin32(sys::cstr str)
     (void)SetClipboardData(CF_UNICODETEXT, hGlob); // If this fails there's nothing we can do anyways.
 }
 
+// NOLINTEND(misc-include-cleaner)
+
 #endif
 
 /// @brief Create an event catcher that for handling Ctrl + C like clipboard copy.
@@ -82,7 +86,7 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Clipbo
             if (const sys::cstr selection(Screen().GetSelection()); !selection.empty())
             {
 #if !_libcxxext_os_windows
-                std::cout << "\033]52;c;" << base64Encode(selection) << "\a" << std::flush;
+                std::cout << "\033]52;c;" << _as(std::string_view, base64Encode(selection)) << "\a" << std::flush;
 #else
                 setClipboardWin32(selection);
 #endif

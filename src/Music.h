@@ -174,7 +174,8 @@ public:
                 std::vector<sys::str> tags { u8"all" };
                 auto tagsRes = TrackMetadata::readField(f, u8"TAGS");
                 if (tagsRes)
-                    tags.append_range(tagsRes.move());
+                    for (sys::str& t : tagsRes.move())
+                        sys::meta::append_to(tags, std::move(t));
                 if (tags.size() == 1uz)
                     tags.emplace_back(u8"uncategorized");
                 std::vector<sys::str> aka = TrackMetadata::readField(f, u8"AKA").move_or(std::vector<sys::str> {});
@@ -204,8 +205,8 @@ public:
             }
         }
 
-        for (auto& [_, playlist] : MusicPlayer::playlists)
-            std::ranges::sort(playlist);
+        for (auto& [_, pl] : MusicPlayer::playlists)
+            std::ranges::sort(pl);
 
         if (MusicPlayer::playlists.empty())
             ret.emplace_back(std::make_error_code(std::errc::no_such_file_or_directory));

@@ -4,9 +4,8 @@
 #include <string_view>
 #include <taglib/fileref.h>
 #include <taglib/flac/flacfile.h>
-#include <taglib/flacfile.h>
 #include <taglib/tag.h>
-#include <taglib/tpropertymap.h>
+#include <taglib/toolkit/tpropertymap.h>
 #include <utility>
 #include <vector>
 
@@ -48,21 +47,24 @@ public:
 
         std::vector<sys::str> artists;
         for (const auto& s : f.file()->properties()["ARTIST"])
-            artists.append_range(sys::str(s.to8Bit(true)).split(u8'/'));
+            for (sys::str& a : sys::str(s.to8Bit(true)).split(u8'/'))
+                sys::meta::append_to(artists, std::move(a));
 
         Artists ret;
         for (sys::str& s : artists)
         {
             const auto prefixLen = [](const std::u8string_view s) -> sz
             {
-                using namespace std::literals;
+                using namespace std::string_view_literals;
 
+                // NOLINTBEGIN(misc-include-cleaner)
                 if (s.starts_with(u8"ft."))
                     return u8"ft."sv.size();
                 if (s.starts_with(u8"feat."))
                     return u8"feat."sv.size();
                 if (s.starts_with(u8"featuring "))
                     return u8"featuring "sv.size();
+                // NOLINTEND(misc-include-cleaner)
                 return 0_uz;
             };
 

@@ -69,11 +69,11 @@ class ThinSliderImpl final : public ui::ComponentBase
         if (this->bounds.x_min < this->bounds.x_max)
         {
             const float width = _as(float, i32(this->bounds.x_max) - i32(this->bounds.x_min) + 1_i32);
-            const float value = std::clamp(std::floorf(_as(float, event.mouse().x - this->bounds.x_min)) / width, 0.0f, 1.0f);
-            if (this->value != value)
+            const float val = std::clamp(std::floorf(_as(float, event.mouse().x - this->bounds.x_min)) / width, 0.0f, 1.0f);
+            if (this->value != val)
             {
-                this->onChange(value);
-                this->value = value;
+                this->onChange(val);
+                this->value = val;
 
                 return true;
             }
