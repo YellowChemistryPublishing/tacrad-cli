@@ -17,7 +17,7 @@ public:
     Config() = delete;
 
     static constexpr std::string_view ApplicationName = "♪♫ tacrad-cli";
-    static constexpr std::string_view VersionIdentifier = "v0.2.0-alpha";
+    static constexpr std::string_view VersionIdentifier = "v1.0.0-beta";
 
     static constexpr std::string_view BlankText = "Nothing to see here!";
 

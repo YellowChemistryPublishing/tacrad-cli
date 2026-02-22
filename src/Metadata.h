@@ -6,6 +6,7 @@
 #include <taglib/flac/flacfile.h>
 #include <taglib/flacfile.h>
 #include <taglib/tag.h>
+#include <taglib/tpropertymap.h>
 #include <utility>
 #include <vector>
 
@@ -19,6 +20,22 @@ class TrackMetadata final
 public:
     TrackMetadata() = delete;
 
+    struct Title
+    {
+        sys::str primary;
+        sys::str sub;
+    };
+    /// @brief Read the title and subtitle of a track.
+    static sys::result<Title> readTitle(const TagLib::FileRef& f)
+    {
+        _retif(nullptr, f.isNull() || !f.tag() || !f.file());
+
+        std::vector<std::string> subtitles;
+        for (const auto& s : f.file()->properties()["SUBTITLE"])
+            subtitles.emplace_back(s.to8Bit(true));
+        return Title { .primary = sys::str(f.tag()->title().to8Bit(true)), .sub = sys::str::join(subtitles, u8" | ") };
+    }
+
     struct Artists
     {
         std::vector<sys::str> artists;
@@ -27,30 +44,33 @@ public:
     /// @brief Read all (if listed) artists, and parse any featured artists.
     static sys::result<Artists> readArtists(const TagLib::FileRef& f)
     {
-        _retif(nullptr, f.isNull() || !f.tag());
-        const sys::str artists(f.tag()->artist().to8Bit(true));
+        _retif(nullptr, f.isNull() || !f.file());
 
-        const auto prefixLen = [](const std::u8string_view s) -> sz
-        {
-            using namespace std::literals;
-
-            if (s.starts_with(u8"ft. "))
-                return u8"ft. "sv.size();
-            if (s.starts_with(u8"feat. "))
-                return u8"feat. "sv.size();
-            if (s.starts_with(u8"featuring "))
-                return u8"featuring "sv.size();
-            return 0_uz;
-        };
+        std::vector<sys::str> artists;
+        for (const auto& s : f.file()->properties()["ARTIST"])
+            artists.append_range(sys::str(s.to8Bit(true)).split(u8'/'));
 
         Artists ret;
-        for (sys::str& s : artists.split(u8'/'))
+        for (sys::str& s : artists)
         {
+            const auto prefixLen = [](const std::u8string_view s) -> sz
+            {
+                using namespace std::literals;
+
+                if (s.starts_with(u8"ft."))
+                    return u8"ft."sv.size();
+                if (s.starts_with(u8"feat."))
+                    return u8"feat."sv.size();
+                if (s.starts_with(u8"featuring "))
+                    return u8"featuring "sv.size();
+                return 0_uz;
+            };
+
             const sz l = prefixLen(s.trim());
             if (l == 0_uz)
                 ret.artists.emplace_back(std::move(s));
             else
-                ret.feats.emplace_back(s.substr(l, s.size() - l));
+                ret.feats.emplace_back(s.substr(l, s.size() - l).trim());
         }
 
         return ret;

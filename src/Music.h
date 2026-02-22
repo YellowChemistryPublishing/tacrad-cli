@@ -110,20 +110,23 @@ public:
     {
         std::filesystem::path file;
 
-        sys::str title = u8"";
-        sys::str subtitle = u8"";
+        sys::cstr titleDisplay = "[empty]";
+        sys::cstr subtitleDisplay = "";
         sys::cstr artistsDisplay = "unknown";
         sys::cstr tagsDisplay = "[none]";
+        sys::cstr akaDisplay = "";
+
+        std::vector<sys::str> aka;
 
         friend bool operator==(const Track&, const Track&) = default;
         friend auto operator<=>(const Track&, const Track&) = default;
 
         /// @brief Retrieve the full title of the track.
-        [[nodiscard]] sys::str fullTitle() const
+        [[nodiscard]] sys::cstr fullDisplayTitle() const
         {
-            sys::str ret = this->title;
-            if (!this->subtitle.empty())
-                ret.append(u8' ').append(this->subtitle);
+            sys::cstr ret = this->titleDisplay;
+            if (!this->subtitleDisplay.empty())
+                ret.append(u8' ').append(this->subtitleDisplay);
             return ret;
         }
     };
@@ -148,25 +151,32 @@ public:
             {
                 const TagLib::FileRef f(native_string(dir.path().generic_u8string()).c_str());
 
+                const auto [title, subtitle] = TrackMetadata::readTitle(f).move_or(
+                    TrackMetadata::Title { .primary = sys::str(dir.path().stem().generic_u8string()), .sub = u8"(^ Title metadata couldn't be read, fallback to filename!)" });
+                const auto [artists, feats] = TrackMetadata::readArtists(f).move_or(TrackMetadata::Artists { .artists { sys::str(u8"unknown") }, .feats {} });
+
                 std::vector<sys::str> tags { u8"all" };
                 auto tagsRes = TrackMetadata::readTrackField(f, u8"TAGS");
                 if (tagsRes)
                     tags.append_range(tagsRes.move());
                 if (tags.size() == 1uz)
                     tags.emplace_back(u8"uncategorized");
+                std::vector<sys::str> aka = TrackMetadata::readTrackField(f, u8"AKA").move_or(std::vector<sys::str> {});
 
-                TrackMetadata::Artists artists = TrackMetadata::readArtists(f).move_or(TrackMetadata::Artists { .artists { sys::str(u8"unknown") }, .feats {} });
                 const Track track { .file = dir.path(),
-                                    .title = sys::str(dir.path().stem().generic_u8string()),
+                                    .titleDisplay = sys::cstr(title),
+                                    .subtitleDisplay = sys::cstr(subtitle),
                                     .artistsDisplay =
                                         [&]
                 {
-                    sys::str ret = sys::str::join(artists.artists, u8"; ");
-                    if (!artists.feats.empty())
-                        ret.append(u8" ft. ").append(sys::str::join(artists.feats, u8"; "));
-                    return _as(sys::cstr, sys::cstr(ret));
+                    sys::str ret = sys::str::join(artists, u8"; ");
+                    if (!feats.empty())
+                        ret.append(u8" ft. ").append(sys::str::join(feats, u8"; "));
+                    return sys::cstr(ret);
                 }(),
-                                    .tagsDisplay = _as(sys::cstr, _as(sys::cstr, sys::str::join(tags, u8"; "))) };
+                                    .tagsDisplay = sys::cstr(sys::str::join(tags, u8"; ")),
+                                    .akaDisplay = sys::cstr(sys::str::join(aka, u8"; ")),
+                                    .aka = std::move(aka) };
 
                 for (const sys::str& tag : tags)
                     MusicPlayer::playlists[sys::str(tag)].emplace_back(track);
@@ -357,12 +367,16 @@ public:
 
         const auto tryFindWithCompare = [&ec](auto&& pred) -> sys::result<fs::path, Error>
         {
-            for (const auto& track : MusicPlayer::playlistWithTag(u8"all"))
+            for (const Track& track : MusicPlayer::playlistWithTag(u8"all"))
             {
-                if (pred(track.fullTitle()))
+                if (pred(track.fullDisplayTitle()))
                     return track.file;
-                if (pred(track.title))
+                if (pred(track.titleDisplay))
                     return track.file;
+                for (const auto& alt : track.aka)
+                    if (pred(sys::cstr(alt)))
+                        return track.file;
+
                 if (ec)
                     return Error::fromCategory(ec.category());
             }
@@ -370,16 +384,16 @@ public:
             return Error::TrackNotFound;
         };
 
-        sys::str compare = sys::str(title);
-        sys::result<fs::path, Error> res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return trackName == compare; });
+        sys::cstr compare(title);
+        sys::result<fs::path, Error> res = tryFindWithCompare([&compare](const std::string_view trackName) { return trackName == compare; });
         _retif(res.move(), res);
 
         compare.fold();
-        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold() == compare; });
+        res = tryFindWithCompare([&compare](sys::cstr trackName) { return trackName.fold() == compare; });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
+        res = tryFindWithCompare([&compare](sys::cstr trackName) { return trackName.fold().starts_with(compare); });
         _retif(res.move(), res);
-        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().contains(compare); });
+        res = tryFindWithCompare([&compare](sys::cstr trackName) { return trackName.fold().contains(compare); });
         _retif(res.move(), res);
 
         return Error::TrackNotFound;

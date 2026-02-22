@@ -34,7 +34,6 @@ class PlaylistImpl final : public ui::ComponentBase
     std::shared_ptr<ConsoleImpl> consoleComp;
 
     std::vector<MusicPlayer::Track> renderedPlaylist;
-    std::vector<sys::str> trackNames;
     i32 selected = 0_i32, curTrack = MusicPlayer::currentTrack;
     ui::Box bounds;
 
@@ -57,18 +56,15 @@ class PlaylistImpl final : public ui::ComponentBase
         if (this->renderedPlaylist != playlist)
         {
             this->containerComp->DetachAllChildren();
-            this->trackNames.clear();
             for (const auto& track : playlist)
             {
-                sys::str fullTitle = track.fullTitle();
-                this->containerComp->Add(ui::MenuEntry(_as(std::string_view, sys::cstr(fullTitle)),
+                this->containerComp->Add(ui::MenuEntry(_as(std::string_view, track.fullDisplayTitle()),
                                                        ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
                 {
                     return postProcessDisplayListEntry(state, this->selected, this->bounds,
                                                        [&] { return state.index == MusicPlayer::currentTrack && this->tagSelComp->selectedTag == MusicPlayer::currentTag; });
                 },
                                                                              .animated_colors {} }));
-                this->trackNames.emplace_back(std::move(fullTitle));
             }
 
             if (this->selected >= playlist.size())
@@ -89,7 +85,7 @@ class PlaylistImpl final : public ui::ComponentBase
                                              [this]() -> ui::Element
     {
         this->syncIfNeeded();
-        return (!this->trackNames.empty() ? this->containerComp->Render() : (ui::text(Config::BlankText) | ui::center)) | vscroll(this->bounds);
+        return (!this->renderedPlaylist.empty() ? this->containerComp->Render() : (ui::text(Config::BlankText) | ui::center)) | vscroll(this->bounds);
     }) |
         ui::CatchEvent([this](const ui::Event& event) -> bool
     {
