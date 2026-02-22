@@ -108,6 +108,8 @@ public:
     /// @brief Music track metadata.
     struct Track
     {
+        // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
+
         std::filesystem::path file;
 
         sys::cstr titleDisplay = "[empty]";
@@ -117,6 +119,8 @@ public:
         sys::cstr akaDisplay = "";
 
         std::vector<sys::str> aka;
+
+        // NOLINTEND(misc-non-private-member-variables-in-classes)
 
         friend bool operator==(const Track&, const Track&) = default;
         friend auto operator<=>(const Track&, const Track&) = default;

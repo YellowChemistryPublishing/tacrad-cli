@@ -29,12 +29,10 @@ class TagSelectorImpl final : public ui::ComponentBase
 {
     std::map<sys::str, std::vector<MusicPlayer::Track>> playlists;
     std::vector<sys::str> tagNames;
-    i32 selected = 0_i32;
+    sys::str selTag = MusicPlayer::currentTag; // NOLINT(misc-non-private-member-variables-in-classes)
+    i32 selTrack = 0_i32;
     ui::Box bounds;
-public:
-    // Currently selected playlist name.
-    sys::str selectedTag = MusicPlayer::currentTag; // NOLINT(misc-non-private-member-variables-in-classes)
-private:
+
     void syncIfNeeded()
     {
         const std::map<sys::str, std::vector<MusicPlayer::Track>>& freshPlaylists = MusicPlayer::allPlaylists();
@@ -46,7 +44,7 @@ private:
                 this->containerComp->Add(ui::MenuEntry(_as(std::string_view, sys::cstr(tag)),
                                                        ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
                 {
-                    return postProcessDisplayListEntry(state, this->selected, this->bounds,
+                    return postProcessDisplayListEntry(state, this->selTrack, this->bounds,
                                                        [&] { return state.label == _as(std::string_view, sys::cstr(MusicPlayer::currentTag)); });
                 },
                                                                              .animated_colors {} }));
@@ -62,11 +60,11 @@ private:
             this->playlists = freshPlaylists;
         }
 
-        if (this->selected >= 0_i32 && this->selected < this->tagNames.size()) [[likely]]
-            this->selectedTag = this->tagNames[sz(this->selected)];
+        if (this->selTrack >= 0_i32 && this->selTrack < this->tagNames.size()) [[likely]]
+            this->selTag = this->tagNames[sz(this->selTrack)];
     }
 
-    ui::Component containerComp = ui::Container::Vertical({}, &*this->selected);
+    ui::Component containerComp = ui::Container::Vertical({}, &*this->selTrack);
     ui::Component displayComp = ui::Renderer(this->containerComp, [this]() -> ui::Element
     {
         this->syncIfNeeded();
@@ -74,6 +72,8 @@ private:
     });
 public:
     TagSelectorImpl() { this->Add(this->displayComp); }
+
+    [[nodiscard]] const sys::str& selectedTag() const { return this->selTag; }
 };
 
 /// @brief Create a `TagSelectorImpl` component.

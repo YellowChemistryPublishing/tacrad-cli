@@ -30,7 +30,7 @@ public:
     {
         _retif(nullptr, f.isNull() || !f.tag() || !f.file());
 
-        std::vector<std::string> subtitles;
+        std::vector<sys::cstr> subtitles;
         for (const auto& s : f.file()->properties()["SUBTITLE"])
             subtitles.emplace_back(s.to8Bit(true));
         return Title { .primary = sys::str(f.tag()->title().to8Bit(true)), .sub = sys::str::join(subtitles, u8" | ") };

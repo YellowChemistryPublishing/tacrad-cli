@@ -39,7 +39,7 @@ class PlaylistImpl final : public ui::ComponentBase
 
     void onEntryEnter()
     {
-        MusicPlayer::currentTag = this->tagSelComp->selectedTag;
+        MusicPlayer::currentTag = this->tagSelComp->selectedTag();
         MusicPlayer::currentTrack = this->selected;
 
         _retif(CmdInv::println(this->consoleComp->history, "[log.warn] Failed to stop music. ({})", _as(std::string_view, stopRes.err())), auto stopRes = MusicPlayer::stopMusic();
@@ -52,7 +52,7 @@ class PlaylistImpl final : public ui::ComponentBase
 
     void syncIfNeeded()
     {
-        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(this->tagSelComp->selectedTag);
+        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(this->tagSelComp->selectedTag());
         if (this->renderedPlaylist != playlist)
         {
             this->containerComp->DetachAllChildren();
@@ -62,7 +62,7 @@ class PlaylistImpl final : public ui::ComponentBase
                                                        ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
                 {
                     return postProcessDisplayListEntry(state, this->selected, this->bounds,
-                                                       [&] { return state.index == MusicPlayer::currentTrack && this->tagSelComp->selectedTag == MusicPlayer::currentTag; });
+                                                       [&] { return state.index == MusicPlayer::currentTrack && this->tagSelComp->selectedTag() == MusicPlayer::currentTag; });
                 },
                                                                              .animated_colors {} }));
             }

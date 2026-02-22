@@ -33,15 +33,15 @@ class DetailsImpl final : public ui::ComponentBase
 
     ui::Component displayComp = ui::Renderer([this]() -> ui::Element
     {
-        if (this->selectedTag == this->tagSelectorComp->selectedTag && this->selectedTrack == this->playlistComp->selectedTrack()) [[likely]]
+        if (this->selectedTag == this->tagSelectorComp->selectedTag() && this->selectedTrack == this->playlistComp->selectedTrack()) [[likely]]
             return this->cachedElement;
 
-        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(sys::str(this->tagSelectorComp->selectedTag));
+        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(sys::str(this->tagSelectorComp->selectedTag()));
         _retif(this->cachedElement = ui::text(Config::BlankText), this->playlistComp->selectedTrack() < 0_i32 || this->playlistComp->selectedTrack() >= playlist.size());
 
         const MusicPlayer::Track& track = playlist[sz(this->playlistComp->selectedTrack())];
 
-        this->selectedTag = this->tagSelectorComp->selectedTag;
+        this->selectedTag = this->tagSelectorComp->selectedTag();
         this->selectedTrack = this->playlistComp->selectedTrack();
 
         return this->cachedElement = ui::vbox(
