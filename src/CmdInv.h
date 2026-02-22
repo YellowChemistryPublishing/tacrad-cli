@@ -137,11 +137,11 @@ inline void CmdInv::playlist(std::vector<CmdInv::Entry>& history, const std::vec
     {
         _retif(CmdInv::println(history, R"([log.error] Wrong number of arguments given to "playlist"!)"), cmd.size() != 3uz);
 
-        char* readEnd = nullptr;
-        sys::integer<long> i = std::strtol(cmd[2uz].c_str(), &readEnd, 10); // NOLINT(google-runtime-int, readability-magic-numbers)
+        char* readEnd = nullptr;                                                  // NOLINT(misc-const-correctness)
+        const sys::integer<long> i = std::strtol(cmd[2uz].c_str(), &readEnd, 10); // NOLINT(google-runtime-int, readability-magic-numbers)
         _retif(CmdInv::println(history, R"([log.error] Invalid index argument given to "playlist"!)"), ssz(readEnd - cmd[2uz].data()) != sz(cmd[2uz].size()));
 
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(MusicPlayer::currentTag);
+        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(MusicPlayer::currentTag);
         _retif(CmdInv::println(history, R"([log.error] Invalid index argument given to "playlist"!)"), i < 0 || i >= playlist.size());
 
         MusicPlayer::currentTrack = i32(i);
@@ -154,7 +154,7 @@ inline void CmdInv::playlist(std::vector<CmdInv::Entry>& history, const std::vec
             MusicPlayer::autoplay(!MusicPlayer::autoplay());
         else
         {
-            sys::cstr s = sys::cstr(cmd[2uz]).trim().to_lower();
+            const sys::cstr s = sys::cstr(cmd[2uz]).trim().to_lower();
             bool val = false;
             if (s == "1" || s == "true" || s == "on")
                 val = true;

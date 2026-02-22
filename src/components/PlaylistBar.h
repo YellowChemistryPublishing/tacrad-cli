@@ -29,14 +29,14 @@ class PlaylistBarImpl final : public ui::ComponentBase
 
     void arrangeTracks(auto&& reorderTracks)
     {
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(this->playlistComp->tagSelector()->selectedTag);
-        const MusicPlayer::FoundMusic toFind = this->playlistComp->selectedTrack() >= 0_i32 && this->playlistComp->selectedTrack() < playlist.size()
+        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(this->playlistComp->tagSelector()->selectedTag);
+        const MusicPlayer::Track toFind = this->playlistComp->selectedTrack() >= 0_i32 && this->playlistComp->selectedTrack() < playlist.size()
             ? playlist[sz(this->playlistComp->selectedTrack())]
-            : MusicPlayer::FoundMusic {};
+            : MusicPlayer::Track {};
 
         reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag));
 
-        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::FoundMusic& v) { return v == toFind; }); // NOLINT(misc-include-cleaner)
+        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::Track& v) { return v == toFind; }); // NOLINT(misc-include-cleaner)
         _retif(, foundIt == playlist.end());
 
         this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.

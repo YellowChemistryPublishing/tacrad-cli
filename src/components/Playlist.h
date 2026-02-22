@@ -33,7 +33,7 @@ class PlaylistImpl final : public ui::ComponentBase
     std::shared_ptr<TagSelectorImpl> tagSelComp;
     std::shared_ptr<ConsoleImpl> consoleComp;
 
-    std::vector<MusicPlayer::FoundMusic> renderedPlaylist;
+    std::vector<MusicPlayer::Track> renderedPlaylist;
     std::vector<sys::str> trackNames;
     i32 selected = 0_i32, curTrack = MusicPlayer::currentTrack;
     ui::Box bounds;
@@ -53,7 +53,7 @@ class PlaylistImpl final : public ui::ComponentBase
 
     void syncIfNeeded()
     {
-        const std::vector<MusicPlayer::FoundMusic>& playlist = MusicPlayer::playlistWithTag(this->tagSelComp->selectedTag);
+        const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(this->tagSelComp->selectedTag);
         if (this->renderedPlaylist != playlist)
         {
             this->containerComp->DetachAllChildren();

@@ -26,7 +26,7 @@ namespace ui = ftxui;
 /// @note Pass `byptr`.
 class TagSelectorImpl final : public ui::ComponentBase
 {
-    std::map<sys::str, std::vector<MusicPlayer::FoundMusic>> playlists;
+    std::map<sys::str, std::vector<MusicPlayer::Track>> playlists;
     std::vector<sys::str> tagNames;
     i32 selected = 0_i32;
     ui::Box bounds;
@@ -36,7 +36,7 @@ public:
 private:
     void syncIfNeeded()
     {
-        const std::map<sys::str, std::vector<MusicPlayer::FoundMusic>>& freshPlaylists = MusicPlayer::allPlaylists();
+        const std::map<sys::str, std::vector<MusicPlayer::Track>>& freshPlaylists = MusicPlayer::allPlaylists();
         if (this->playlists != freshPlaylists)
         {
             const auto addTag = [this](std::u8string_view tag)
