@@ -73,7 +73,7 @@ class PlaylistImpl final : public ui::ComponentBase
             this->renderedPlaylist = playlist;
         }
 
-        if (this->curTrack != MusicPlayer::currentTrack)
+        if (this->curTrack != MusicPlayer::currentTrack && this->tagSelComp->selectedTag() == MusicPlayer::currentTag)
         {
             this->selected = i32(MusicPlayer::currentTrack);
             this->curTrack = MusicPlayer::currentTrack;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
@@ -40,11 +42,9 @@ class PlaylistBarImpl final : public ui::ComponentBase
 
         reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag()));
 
-        auto foundIt = std::ranges::find_if(playlist, [&toFind](const MusicPlayer::Track& v) { return v == toFind; }); // NOLINT(misc-include-cleaner)
-        _retif(, foundIt == playlist.end());
-
+        const i32 trackIndex = MusicPlayer::indexOf(playlist, toFind);
         this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
-        this->playlistComp->selectedTrack(foundIt != playlist.end() ? i32(std::distance(playlist.begin(), foundIt)) : i32::highest());
+        this->playlistComp->selectedTrack(trackIndex);
     }
     void searchForTracks()
     {
@@ -86,6 +86,7 @@ public:
         playlistComp(std::move(playlistComp)), consoleComp(std::move(console))
     {
         this->searchForTracks();
+        MusicPlayer::currentTrack = 0_i32;
         this->Add(this->containerComp);
     }
 };

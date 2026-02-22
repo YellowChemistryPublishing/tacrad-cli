@@ -140,18 +140,13 @@ private:
 public:
     MusicPlayer() = delete;
 
-    /// @brief Set the current track index for `playlist`.
-    /// @note If `track` is not found in `playlist`, `MusicPlayer::currentTrack` is set to `i32::highest()`.
-    static void setCurrentTrackFor(const std::vector<Track>& playlist, const Track& track)
+    /// @brief Retrieve the index of `track` in `playlist`.
+    /// @note If `track` is not found in `playlist`, `i32::highest()` is returned.
+    static i32 indexOf(const std::vector<Track>& playlist, const Track& track)
     {
-        auto foundIt = std::ranges::find_if(playlist, [&](const Track& v) { return v == track; });
-        if (foundIt == playlist.end())
-        {
-            MusicPlayer::currentTrack = i32::highest();
-            return;
-        }
-
-        MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
+        const auto foundIt = std::ranges::find_if(playlist, [&](const Track& v) { return v == track; });
+        _retif(i32::highest(), foundIt == playlist.end());
+        return std::distance(playlist.begin(), foundIt);
     }
 
     /// @brief Search and update `MusicPlayer::playlists` with music files recursively in the music directory.
@@ -215,7 +210,7 @@ public:
         if (MusicPlayer::playlists.empty())
             ret.emplace_back(std::make_error_code(std::errc::no_such_file_or_directory));
 
-        MusicPlayer::setCurrentTrackFor(MusicPlayer::currentPlaylist(), toFind);
+        MusicPlayer::currentTrack = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind);
         return ret;
     }
 
@@ -249,7 +244,7 @@ public:
         const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
         reorder(playlist, std::move(tag));
-        MusicPlayer::setCurrentTrackFor(playlist, toFind);
+        MusicPlayer::currentTrack = MusicPlayer::indexOf(playlist, toFind);
         return true;
     }
     /// @brief Shuffle the current playlist.
