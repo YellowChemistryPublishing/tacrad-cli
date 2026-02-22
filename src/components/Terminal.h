@@ -177,9 +177,12 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Termin
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
         {
-            terminal->cmd = Config::QuickActionKey;
+            for (const char32_t c : sys::str32_view(terminal->cmd))
+                if (!sys::ch::is_whitespace(c))
+                    return false;
+
+            terminal->cmd.clear();
             terminal->TakeFocus(); // Focus terminal, when user types quick action key.
-            return true;
         }
 
         return false;
