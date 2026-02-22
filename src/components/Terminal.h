@@ -144,6 +144,9 @@ public:
     {
         this->Add(this->inputComp);
     }
+
+    // NOLINTNEXTLINE(readability-identifier-naming)
+    friend ui::ComponentDecorator TerminalQuickActionHandler(std::shared_ptr<TerminalImpl> terminal);
 };
 
 /// @brief Create a `TerminalImpl` component.
@@ -168,12 +171,16 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Termin
 }
 
 /// @brief Event handler for quick-focus on ':' key press.
-inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalQuickActionHandler(ui::Component terminal)
+inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ TerminalQuickActionHandler(std::shared_ptr<TerminalImpl> terminal)
 {
     return ui::CatchEvent([terminal = std::move(terminal)](const ui::Event& event)
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
+        {
+            terminal->cmd = Config::QuickActionKey;
             terminal->TakeFocus(); // Focus terminal, when user types quick action key.
+            return true;
+        }
 
         return false;
     });

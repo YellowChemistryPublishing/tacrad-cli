@@ -44,7 +44,7 @@ class PlaylistBarImpl final : public ui::ComponentBase
         _retif(, foundIt == playlist.end());
 
         this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
-        this->playlistComp->selectedTrack(std::distance(playlist.begin(), foundIt));
+        this->playlistComp->selectedTrack(foundIt != playlist.end() ? i32(std::distance(playlist.begin(), foundIt)) : i32::highest());
     }
     void searchForTracks()
     {

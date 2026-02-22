@@ -140,10 +140,27 @@ private:
 public:
     MusicPlayer() = delete;
 
+    /// @brief Set the current track index for `playlist`.
+    /// @note If `track` is not found in `playlist`, `MusicPlayer::currentTrack` is set to `i32::highest()`.
+    static void setCurrentTrackFor(const std::vector<Track>& playlist, const Track& track)
+    {
+        auto foundIt = std::ranges::find_if(playlist, [&](const Track& v) { return v == track; });
+        if (foundIt == playlist.end())
+        {
+            MusicPlayer::currentTrack = i32::highest();
+            return;
+        }
+
+        MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
+    }
+
     /// @brief Search and update `MusicPlayer::playlists` with music files recursively in the music directory.
     [[nodiscard]] static std::vector<std::error_code> searchForTracks()
     {
         namespace fs = std::filesystem;
+
+        const std::vector<Track>& playlist = MusicPlayer::playlistWithTag(MusicPlayer::currentTag);
+        const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
         std::error_code ec;
         MusicPlayer::playlists.clear();
@@ -160,12 +177,12 @@ public:
                 const auto [artists, feats] = TrackMetadata::readArtists(f).move_or(TrackMetadata::Artists { .artists { sys::str(u8"unknown") }, .feats {} });
 
                 std::vector<sys::str> tags { u8"all" };
-                auto tagsRes = TrackMetadata::readTrackField(f, u8"TAGS");
+                auto tagsRes = TrackMetadata::readField(f, u8"TAGS");
                 if (tagsRes)
                     tags.append_range(tagsRes.move());
                 if (tags.size() == 1uz)
                     tags.emplace_back(u8"uncategorized");
-                std::vector<sys::str> aka = TrackMetadata::readTrackField(f, u8"AKA").move_or(std::vector<sys::str> {});
+                std::vector<sys::str> aka = TrackMetadata::readField(f, u8"AKA").move_or(std::vector<sys::str> {});
 
                 const Track track { .file = dir.path(),
                                     .titleDisplay = sys::cstr(title),
@@ -196,11 +213,9 @@ public:
             std::ranges::sort(playlist);
 
         if (MusicPlayer::playlists.empty())
-        {
             ret.emplace_back(std::make_error_code(std::errc::no_such_file_or_directory));
-            return ret;
-        }
 
+        MusicPlayer::setCurrentTrackFor(MusicPlayer::currentPlaylist(), toFind);
         return ret;
     }
 
@@ -231,15 +246,10 @@ public:
         _retif(false, it == MusicPlayer::playlists.end());
 
         std::vector<Track>& playlist = it->second;
-        const MusicPlayer::Track toFind =
-            MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : MusicPlayer::Track {};
+        const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
         reorder(playlist, std::move(tag));
-
-        auto foundIt = std::ranges::find_if(playlist, [&](const MusicPlayer::Track& v) { return v == toFind; });
-        _retif(true, foundIt == playlist.end());
-
-        MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
+        MusicPlayer::setCurrentTrackFor(playlist, toFind);
         return true;
     }
     /// @brief Shuffle the current playlist.
@@ -359,7 +369,7 @@ public:
     }
 
     /// @brief Lookup a track by name in the current playlist.
-    [[nodiscard]] static sys::result<std::filesystem::path, Error> musicLookup(const std::u8string_view title)
+    [[nodiscard]] static sys::result<std::filesystem::path, Error> musicLookup(const std::u8string_view title) // NOLINT(readability-function-cognitive-complexity)
     {
         namespace fs = std::filesystem;
         std::error_code ec;

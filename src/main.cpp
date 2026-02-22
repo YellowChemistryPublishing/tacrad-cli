@@ -35,7 +35,7 @@ int main()
 
         std::shared_ptr<TabContainerImpl> tabContainer = std::static_pointer_cast<TabContainerImpl>(TabContainer({ ui, console }));
         ui::Component tabSelector = TabSelect(tabContainer);
-        const ui::Component terminal = Terminal(console, ui->statusBar());
+        const std::shared_ptr<TerminalImpl> terminal = std::static_pointer_cast<TerminalImpl>(Terminal(console, ui->statusBar()));
 
         ui::Component rootContainer = ui::Container::Vertical({
                                           std::move(tabSelector),

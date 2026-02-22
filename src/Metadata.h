@@ -78,7 +78,7 @@ public:
 
     /// @brief Read a track's field as a single long string.
     /// @note Normally, fields are lists of strings, but you may want to read them as a single long string too!
-    static sys::result<sys::str> readTrackFieldRaw(const TagLib::FileRef& f, const std::u8string_view fieldName)
+    static sys::result<sys::str> readFieldRaw(const TagLib::FileRef& f, const std::u8string_view fieldName)
     {
         _retif(nullptr, f.isNull() || !f.tag());
         sys::str comment(f.tag()->comment().to8Bit(true));
@@ -93,9 +93,9 @@ public:
         return comment.substr(tagInfoBegin, tagInfoEnd - tagInfoBegin).trim();
     }
     /// @brief Read all (if any) values of a track's field.
-    static sys::result<std::vector<sys::str>> readTrackField(const TagLib::FileRef& f, const std::u8string_view fieldName)
+    static sys::result<std::vector<sys::str>> readField(const TagLib::FileRef& f, const std::u8string_view fieldName)
     {
-        _res_movret(const sys::str fieldRaw, TrackMetadata::readTrackFieldRaw(f, fieldName));
+        _res_movret(const sys::str fieldRaw, TrackMetadata::readFieldRaw(f, fieldName));
 
         std::vector<sys::str> ret = fieldRaw.split(u8';');
         _retif(nullptr, ret.empty());
