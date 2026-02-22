@@ -9,6 +9,7 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>
+#include <inline/Integer.inl>
 #include <map>
 #include <string_view>
 #include <vector>
@@ -72,11 +73,7 @@ private:
         return (!this->playlists.empty() ? this->containerComp->Render() : (ui::text(Config::BlankText) | ui::center)) | vscroll(this->bounds);
     });
 public:
-    TagSelectorImpl()
-    {
-        MusicPlayer::searchForTracks();
-        this->Add(this->displayComp);
-    }
+    TagSelectorImpl() { this->Add(this->displayComp); }
 };
 
 /// @brief Create a `TagSelectorImpl` component.

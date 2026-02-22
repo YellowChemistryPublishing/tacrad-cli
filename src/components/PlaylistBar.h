@@ -26,6 +26,7 @@ namespace ui = ftxui;
 class PlaylistBarImpl final : public ui::ComponentBase
 {
     std::shared_ptr<PlaylistImpl> playlistComp;
+    std::shared_ptr<ConsoleImpl> consoleComp;
 
     void arrangeTracks(auto&& reorderTracks)
     {
@@ -41,6 +42,17 @@ class PlaylistBarImpl final : public ui::ComponentBase
 
         this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
         this->playlistComp->selectedTrack(std::distance(playlist.begin(), foundIt));
+    }
+    void searchForTracks()
+    {
+        std::vector<std::error_code> errs = MusicPlayer::searchForTracks();
+        if (!errs.empty())
+        {
+            sys::cstr log = "[log.warn] Searching for playable music encoutered some errors, playlists may be incomplete:";
+            for (const std::error_code& ec : errs)
+                log.append("\n    ").append(ec.message());
+            CmdInv::println(this->consoleComp->history, "{}", log);
+        }
     }
 
     ui::Component containerComp =
@@ -62,16 +74,21 @@ class PlaylistBarImpl final : public ui::ComponentBase
                                             .animated_colors {} }),
               hspace(),
               ui::Button(ui::ButtonOption { .label = UserSettings::ReloadLabel,
-                                            .on_click = MusicPlayer::searchForTracks,
+                                            .on_click = [this] { this->searchForTracks(); },
                                             .transform = [](const ui::EntryState& state) -> ui::Element { return postProcessIconButton(ui::text(state.label), state); },
                                             .animated_colors {} }) }) |
         hpad;
 public:
-    explicit PlaylistBarImpl(std::shared_ptr<PlaylistImpl> playlistComp) : playlistComp(std::move(playlistComp)) { this->Add(this->containerComp); }
+    explicit PlaylistBarImpl(std::shared_ptr<PlaylistImpl> playlistComp, std::shared_ptr<ConsoleImpl> console) :
+        playlistComp(std::move(playlistComp)), consoleComp(std::move(console))
+    {
+        this->searchForTracks();
+        this->Add(this->containerComp);
+    }
 };
 
 /// @brief Create a `PlaylistBarImpl` component.
-inline ui::Component /* NOLINT(readability-identifier-naming) */ PlaylistBar(std::shared_ptr<PlaylistImpl> playlistComp)
+inline ui::Component /* NOLINT(readability-identifier-naming) */ PlaylistBar(std::shared_ptr<PlaylistImpl> playlistComp, std::shared_ptr<ConsoleImpl> console)
 {
-    return ui::Make<PlaylistBarImpl>(std::move(playlistComp));
+    return ui::Make<PlaylistBarImpl>(std::move(playlistComp), std::move(console));
 }

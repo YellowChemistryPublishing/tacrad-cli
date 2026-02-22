@@ -32,7 +32,7 @@ class UIImpl final : public ui::ComponentBase
 
     std::shared_ptr<TagSelectorImpl> tagListComp = std::static_pointer_cast<TagSelectorImpl>(TagSelector());
     std::shared_ptr<PlaylistImpl> playlistComp;
-    ui::Component playlistPanelComp = ui::Container::Vertical({ playlistComp | ui::yflex, PlaylistBar(playlistComp) });
+    ui::Component playlistPanelComp;
     ui::Component trackDetailsComp = Details(tagListComp, playlistComp);
 
     std::shared_ptr<StatusBarImpl> statBarComp;
@@ -48,7 +48,9 @@ class UIImpl final : public ui::ComponentBase
           ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
     explicit UIImpl(std::shared_ptr<ConsoleImpl> consoleComp) :
-        playlistComp(std::static_pointer_cast<PlaylistImpl>(Playlist(tagListComp, consoleComp))), statBarComp(std::static_pointer_cast<StatusBarImpl>(StatusBar(consoleComp)))
+        playlistComp(std::static_pointer_cast<PlaylistImpl>(Playlist(tagListComp, consoleComp))),
+        playlistPanelComp(ui::Container::Vertical({ playlistComp | ui::yflex, PlaylistBar(playlistComp, consoleComp) })),
+        statBarComp(std::static_pointer_cast<StatusBarImpl>(StatusBar(consoleComp)))
     {
         this->Add(this->containerComp);
     }

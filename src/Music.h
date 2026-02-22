@@ -105,16 +105,27 @@ class MusicPlayer final
     static inline std::optional<Audio> audio;
     static inline std::atomic<bool> hasAudio = false;
 public:
+    /// @brief Music track metadata.
     struct Track
     {
-        sys::str name = u8"";
         std::filesystem::path file;
 
+        sys::str title = u8"";
+        sys::str subtitle = u8"";
         sys::cstr artistsDisplay = "unknown";
         sys::cstr tagsDisplay = "[none]";
 
         friend bool operator==(const Track&, const Track&) = default;
         friend auto operator<=>(const Track&, const Track&) = default;
+
+        /// @brief Retrieve the full title of the track.
+        [[nodiscard]] sys::str fullTitle() const
+        {
+            sys::str ret = this->title;
+            if (!this->subtitle.empty())
+                ret.append(u8' ').append(this->subtitle);
+            return ret;
+        }
     };
 private:
     static inline std::map<sys::str, std::vector<Track>> playlists;
@@ -122,91 +133,8 @@ private:
 public:
     MusicPlayer() = delete;
 
-    static sys::result<float, Error> currentTime()
-    {
-        _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
-        float ret = 0.0f;
-        if (const ma_result res = ma_sound_get_cursor_in_seconds(&MusicPlayer::audio->sound, &ret); res != MA_SUCCESS)
-            return Error::fromAudioEngineResult(res);
-        return ret;
-    }
-    static sys::result<float, Error> totalTime()
-    {
-        _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
-        return MusicPlayer::audio->audioLen;
-    }
-    _pure_const static sys::cstr formatTime(float seconds)
-    {
-        return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); // NOLINT(readability-magic-numbers)
-    }
-
-    /// @brief Checks if there is music loaded.
-    /// @note Thread-safe.
-    [[nodiscard]] static bool loaded() { return MusicPlayer::hasAudio.load(); }
-    /// @brief Checks if music is currently playing.
-    /// @note Thread-safe.
-    [[nodiscard]] static bool playing() { return MusicPlayer::isPlaying.load(); }
-    /// @brief Checks if music should autoplay.
-    /// @note Thread-safe.
-    [[nodiscard]] static bool autoplay() { return MusicPlayer::shouldAutoplay.load(); }
-    /// @brief Sets whether music should autoplay.
-    /// @note Thread-safe.
-    static void autoplay(const bool value) { MusicPlayer::shouldAutoplay.store(value); }
-
-    static sys::result<std::filesystem::path, Error> musicLookup(const std::u8string_view name)
-    {
-        namespace fs = std::filesystem;
-        std::error_code ec;
-
-        if (!fs::exists("music/", ec))
-            return Error::DirectoryNotFound;
-        if (ec)
-            return Error::fromCategory(ec.category());
-
-        const auto tryFindWithCompare = [&ec](auto&& pred) -> sys::result<fs::path, Error>
-        {
-            for (const auto& dir : fs::recursive_directory_iterator("music/", fs::directory_options::skip_permission_denied, ec))
-            {
-                if (dir.is_regular_file(ec) && pred(dir.path().stem().generic_u8string()))
-                    return dir.path();
-                if (ec)
-                    return Error::fromCategory(ec.category());
-            }
-
-            return Error::TrackNotFound;
-        };
-
-        sys::str compare = sys::str(name);
-        sys::result<fs::path, Error> res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName) == compare; });
-        _retif(res.move(), res);
-
-        compare.fold();
-        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold() == compare; });
-        _retif(res.move(), res);
-        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
-        _retif(res.move(), res);
-        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().contains(compare); });
-        _retif(res.move(), res);
-
-        return res;
-    }
-
-    static inline sys::str currentTag = u8"all";
-    static inline i32 currentTrack = 0_i32;
-    [[nodiscard]] static const std::vector<Track>& playlistWithTag(const std::u8string_view tag)
-    {
-        static const std::vector<Track> notFound;
-        _retif(notFound, tag.empty());
-
-        if (auto it = MusicPlayer::playlists.find(sys::str(tag)); it != MusicPlayer::playlists.end())
-            return it->second;
-
-        return notFound;
-    }
-    [[nodiscard]] static const std::vector<Track>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::currentTag); }
-    [[nodiscard]] static const std::map<sys::str, std::vector<Track>>& allPlaylists() { return MusicPlayer::playlists; }
-
-    static std::vector<std::error_code> searchForTracks()
+    /// @brief Search and update `MusicPlayer::playlists` with music files recursively in the music directory.
+    [[nodiscard]] static std::vector<std::error_code> searchForTracks()
     {
         namespace fs = std::filesystem;
 
@@ -221,24 +149,24 @@ public:
                 const TagLib::FileRef f(native_string(dir.path().generic_u8string()).c_str());
 
                 std::vector<sys::str> tags { u8"all" };
-                auto tagsRes = TrackMetadata::readTrackTags(f);
+                auto tagsRes = TrackMetadata::readTrackField(f, u8"TAGS");
                 if (tagsRes)
                     tags.append_range(tagsRes.move());
                 if (tags.size() == 1uz)
                     tags.emplace_back(u8"uncategorized");
 
-                auto artistsRes = TrackMetadata::readArtists(f);
-                const Track track { .name = sys::str(dir.path().stem().generic_u8string()),
-                                   .file = dir.path(),
-                                   .artistsDisplay = artistsRes ? [&, as = artistsRes.move()]
+                TrackMetadata::Artists artists = TrackMetadata::readArtists(f).move_or(TrackMetadata::Artists { .artists { sys::str(u8"unknown") }, .feats {} });
+                const Track track { .file = dir.path(),
+                                    .title = sys::str(dir.path().stem().generic_u8string()),
+                                    .artistsDisplay =
+                                        [&]
                 {
-                    sys::str ret= sys::str::join(as.artists, u8"; ");
-                    if (!as.feats.empty())
-                        ret.append(u8" ft. ").append(sys::str::join(as.feats, u8"; "));
+                    sys::str ret = sys::str::join(artists.artists, u8"; ");
+                    if (!artists.feats.empty())
+                        ret.append(u8" ft. ").append(sys::str::join(artists.feats, u8"; "));
                     return _as(sys::cstr, sys::cstr(ret));
-                }()
-                                                                : sys::cstr("unknown"),
-                                   .tagsDisplay = _as(sys::cstr, _as(sys::cstr, sys::str::join(tags, u8"; "))) };
+                }(),
+                                    .tagsDisplay = _as(sys::cstr, _as(sys::cstr, sys::str::join(tags, u8"; "))) };
 
                 for (const sys::str& tag : tags)
                     MusicPlayer::playlists[sys::str(tag)].emplace_back(track);
@@ -262,7 +190,26 @@ public:
         return ret;
     }
 
-    /// @brief Reorders current playlist with reordering function.
+    static inline sys::str currentTag = u8"all";
+    static inline i32 currentTrack = 0_i32;
+    /// @brief Retrieve the playlist with `tag`.
+    /// @return Playlist, or static empty vector if not found.
+    [[nodiscard]] static const std::vector<Track>& playlistWithTag(const std::u8string_view tag)
+    {
+        static const std::vector<Track> notFound;
+        _retif(notFound, tag.empty());
+
+        if (auto it = MusicPlayer::playlists.find(sys::str(tag)); it != MusicPlayer::playlists.end())
+            return it->second;
+
+        return notFound;
+    }
+    /// @brief Retrieve the current playlist, based on `MusicPlayer::currentTag`.
+    [[nodiscard]] static const std::vector<Track>& currentPlaylist() { return MusicPlayer::playlistWithTag(MusicPlayer::currentTag); }
+    /// @brief Retrieve every parsed playlist.
+    [[nodiscard]] static const std::map<sys::str, std::vector<Track>>& allPlaylists() { return MusicPlayer::playlists; }
+
+    /// @brief Reorder current playlist with reordering function.
     /// @return Whether the playlist existed to reorder.
     [[nodiscard]] static bool reorderCurrentPlaylist(auto&& reorder, sys::str tag)
     {
@@ -281,6 +228,8 @@ public:
         MusicPlayer::currentTrack = std::distance(playlist.begin(), foundIt);
         return true;
     }
+    /// @brief Shuffle the current playlist.
+    /// @return Whether the playlist existed to shuffle.
     [[nodiscard]] static bool shufflePlaylist(sys::str tag)
     {
         return MusicPlayer::reorderCurrentPlaylist([](std::vector<Track>& playlist, sys::str tag)
@@ -290,6 +239,8 @@ public:
                 MusicPlayer::lastPlaylistReorderWasReshuffle.insert(std::move(tag));
         }, std::move(tag));
     }
+    /// @brief Sort the current playlist lexicographically.
+    /// @return Whether the playlist existed to sort.
     [[nodiscard]] static bool sortPlaylistLexicographically(sys::str tag)
     {
         return MusicPlayer::reorderCurrentPlaylist([](std::vector<Track>& playlist, sys::str tag)
@@ -298,6 +249,8 @@ public:
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
         }, std::move(tag));
     }
+    /// @brief Sort the current playlist reverse lexicographically.
+    /// @return Whether the playlist existed to sort.
     [[nodiscard]] static bool sortPlaylistReverseLexicographically(sys::str tag)
     {
         return MusicPlayer::reorderCurrentPlaylist([](std::vector<Track>& playlist, sys::str tag)
@@ -307,6 +260,41 @@ public:
         }, std::move(tag));
     }
 
+    /// @brief Check if there is music loaded.
+    /// @note Thread-safe.
+    [[nodiscard]] static bool loaded() { return MusicPlayer::hasAudio.load(); }
+    /// @brief Check if music is currently playing.
+    /// @note Thread-safe.
+    [[nodiscard]] static bool playing() { return MusicPlayer::isPlaying.load(); }
+    /// @brief Check if music should autoplay.
+    /// @note Thread-safe.
+    [[nodiscard]] static bool autoplay() { return MusicPlayer::shouldAutoplay.load(); }
+    /// @brief Set whether music should autoplay.
+    /// @note Thread-safe.
+    static void autoplay(const bool value) { MusicPlayer::shouldAutoplay.store(value); }
+
+    /// @brief Retrieve the current time in seconds of the currently playing track.
+    static sys::result<float, Error> currentTime()
+    {
+        _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
+        float ret = 0.0f;
+        if (const ma_result res = ma_sound_get_cursor_in_seconds(&MusicPlayer::audio->sound, &ret); res != MA_SUCCESS)
+            return Error::fromAudioEngineResult(res);
+        return ret;
+    }
+    /// @brief Retrieve the total time in seconds of the currently playing track.
+    static sys::result<float, Error> totalTime()
+    {
+        _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
+        return MusicPlayer::audio->audioLen;
+    }
+    /// @brief Format a duration in `seconds` for display.
+    _pure_const static sys::cstr formatTime(float seconds)
+    {
+        return std::format("{}:{:02}", *i32(seconds / 60.0f), *i32(std::fmod(seconds, 60.0f))); // NOLINT(readability-magic-numbers)
+    }
+
+    /// @brief Resume the currently playing track.
     [[nodiscard]] static sys::result<void, Error> resume()
     {
         _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
@@ -318,6 +306,7 @@ public:
         MusicPlayer::isPlaying = true;
         return {};
     }
+    /// @brief Pause the currently playing track.
     [[nodiscard]] static sys::result<void, Error> pause()
     {
         _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
@@ -329,6 +318,7 @@ public:
         MusicPlayer::isPlaying = false;
         return {};
     }
+    /// @brief Seek to a specific time in the currently playing track.
     [[nodiscard]] static sys::result<void, Error> seek(float querySeconds)
     {
         _retif(Error::TrackNotLoaded, !MusicPlayer::audio);
@@ -344,7 +334,9 @@ public:
         return {};
     }
 
+    /// @brief Retrieve the volume of the audio engine.
     [[nodiscard]] static float volume() { return ma_engine_get_volume(&MusicPlayer::audioEngine()); }
+    /// @brief Set the volume of the audio engine.
     [[nodiscard]] static sys::result<void, Error> volume(float linear)
     {
         if (const ma_result res = ma_engine_set_volume(&MusicPlayer::audioEngine(), linear); res != MA_SUCCESS)
@@ -352,6 +344,47 @@ public:
         return {};
     }
 
+    /// @brief Lookup a track by name in the current playlist.
+    [[nodiscard]] static sys::result<std::filesystem::path, Error> musicLookup(const std::u8string_view title)
+    {
+        namespace fs = std::filesystem;
+        std::error_code ec;
+
+        if (!fs::exists("music/", ec))
+            return Error::DirectoryNotFound;
+        if (ec)
+            return Error::fromCategory(ec.category());
+
+        const auto tryFindWithCompare = [&ec](auto&& pred) -> sys::result<fs::path, Error>
+        {
+            for (const auto& track : MusicPlayer::playlistWithTag(u8"all"))
+            {
+                if (pred(track.fullTitle()))
+                    return track.file;
+                if (pred(track.title))
+                    return track.file;
+                if (ec)
+                    return Error::fromCategory(ec.category());
+            }
+
+            return Error::TrackNotFound;
+        };
+
+        sys::str compare = sys::str(title);
+        sys::result<fs::path, Error> res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return trackName == compare; });
+        _retif(res.move(), res);
+
+        compare.fold();
+        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold() == compare; });
+        _retif(res.move(), res);
+        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().starts_with(compare); });
+        _retif(res.move(), res);
+        res = tryFindWithCompare([&compare](const std::u8string_view trackName) { return sys::str(trackName).fold().contains(compare); });
+        _retif(res.move(), res);
+
+        return Error::TrackNotFound;
+    }
+    /// @brief Start playing a music file.
     [[nodiscard]] static sys::result<void, Error> startMusic(const std::filesystem::path& foundMusicFile)
     {
         if (!MusicPlayer::audio)
@@ -410,6 +443,8 @@ public:
         audDtor.release();
         return {};
     }
+
+    /// @brief Lookup a track by name in the current playlist and play it.
     [[nodiscard]] static sys::result<void, Error> queryStartMusic(std::u8string_view query)
     {
         namespace fs = std::filesystem;
@@ -427,6 +462,7 @@ public:
 
         return MusicPlayer::startMusic(found);
     }
+    /// @brief Stop the current music.
     [[nodiscard]] static sys::result<void, Error> stopMusic()
     {
         _retif({}, !MusicPlayer::audio);
@@ -443,6 +479,7 @@ public:
         return {};
     }
 
+    /// @brief Start playing the current track at `MusicPlayer::currentTrack`.
     [[nodiscard]] static sys::result<void, Error> play()
     {
         _retif(stopRes, auto stopRes = MusicPlayer::stopMusic(); !stopRes);
@@ -465,6 +502,7 @@ public:
 
         return MusicPlayer::startMusic(playlist[sz(MusicPlayer::currentTrack)].file);
     }
+    /// @brief Start playing the next track in the current playlist.
     [[nodiscard]] static sys::result<void, Error> next()
     {
         sys::optional_destructor playingDtor = [] noexcept { MusicPlayer::isPlaying.store(false); };

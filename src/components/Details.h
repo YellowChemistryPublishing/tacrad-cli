@@ -45,7 +45,8 @@ class DetailsImpl final : public ui::ComponentBase
         this->selectedTrack = this->playlistComp->selectedTrack();
 
         return this->cachedElement = ui::vbox(
-                   { ui::paragraphAlignLeft(_as(std::string_view, sys::cstr(track.name))) | ui::bold,
+                   { ui::paragraphAlignLeft(_as(std::string_view, sys::cstr(track.title))) | ui::bold,
+                     !track.subtitle.empty() ? ui::paragraphAlignLeft(_as(std::string_view, sys::cstr(track.subtitle))) : ui::emptyElement(),
                      ui::paragraphAlignLeft(_as(std::string_view, sys::cstr(track.artistsDisplay))) | ui::color(UserSettings::FlavorDescriptionColor), ui::separatorEmpty(),
                      ui::hbox({ ui::text("tags:"), ui::separatorEmpty(),
                                 ui::paragraphAlignLeft(_as(std::string_view, sys::cstr(track.tagsDisplay))) | ui::color(UserSettings::FlavorDescriptionColor) }),

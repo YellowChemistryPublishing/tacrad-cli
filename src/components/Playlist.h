@@ -60,14 +60,15 @@ class PlaylistImpl final : public ui::ComponentBase
             this->trackNames.clear();
             for (const auto& track : playlist)
             {
-                this->trackNames.emplace_back(track.name);
-                this->containerComp->Add(ui::MenuEntry(_as(std::string_view, sys::cstr(track.name)),
+                sys::str fullTitle = track.fullTitle();
+                this->containerComp->Add(ui::MenuEntry(_as(std::string_view, sys::cstr(fullTitle)),
                                                        ui::MenuEntryOption { .transform = [this](const ui::EntryState& state) -> ui::Element
                 {
                     return postProcessDisplayListEntry(state, this->selected, this->bounds,
                                                        [&] { return state.index == MusicPlayer::currentTrack && this->tagSelComp->selectedTag == MusicPlayer::currentTag; });
                 },
                                                                              .animated_colors {} }));
+                this->trackNames.emplace_back(std::move(fullTitle));
             }
 
             if (this->selected >= playlist.size())
