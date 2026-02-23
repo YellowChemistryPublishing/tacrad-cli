@@ -40,7 +40,7 @@ class PlaylistBarImpl final : public ui::ComponentBase
             ? playlist[sz(this->playlistComp->selectedTrack())]
             : MusicPlayer::Track {};
 
-        reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag()));
+        reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag()), true);
 
         const i32 trackIndex = MusicPlayer::indexOf(playlist, toFind);
         this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.

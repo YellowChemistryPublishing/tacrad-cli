@@ -236,48 +236,54 @@ public:
 
     /// @brief Reorder current playlist with reordering function.
     /// @return Whether the playlist existed to reorder.
-    [[nodiscard]] static bool reorderCurrentPlaylist(auto&& reorder, sys::str tag)
+    [[nodiscard]] static bool reorderCurrentPlaylist(auto&& reorder, sys::str tag, const bool followPrevious)
     {
         auto it = MusicPlayer::playlists.find(tag);
         _retif(false, it == MusicPlayer::playlists.end());
 
-        std::vector<Track>& playlist = it->second;
-        const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
+        if (followPrevious)
+        {
+            std::vector<Track>& playlist = it->second;
+            const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
-        reorder(playlist, std::move(tag));
-        MusicPlayer::currentTrack = MusicPlayer::indexOf(playlist, toFind);
+            reorder(playlist, std::move(tag));
+            MusicPlayer::currentTrack = MusicPlayer::indexOf(playlist, toFind);
+        }
+        else
+            reorder(it->second, std::move(tag));
+
         return true;
     }
     /// @brief Shuffle the current playlist.
     /// @return Whether the playlist existed to shuffle.
-    [[nodiscard]] static bool shufflePlaylist(sys::str tag)
+    [[nodiscard]] static bool shufflePlaylist(sys::str tag, const bool followPrevious = true)
     {
         return MusicPlayer::reorderCurrentPlaylist([](std::vector<Track>& playlist, sys::str tag)
         {
             std::shuffle(playlist.begin(), playlist.end(), MusicPlayer::randEngine);
             if (MusicPlayer::playlists.contains(tag))
                 MusicPlayer::lastPlaylistReorderWasReshuffle.insert(std::move(tag));
-        }, std::move(tag));
+        }, std::move(tag), followPrevious);
     }
     /// @brief Sort the current playlist lexicographically.
     /// @return Whether the playlist existed to sort.
-    [[nodiscard]] static bool sortPlaylistLexicographically(sys::str tag)
+    [[nodiscard]] static bool sortPlaylistLexicographically(sys::str tag, const bool followPrevious = true)
     {
         return MusicPlayer::reorderCurrentPlaylist([](std::vector<Track>& playlist, sys::str tag)
         {
             std::ranges::sort(playlist);
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
-        }, std::move(tag));
+        }, std::move(tag), followPrevious);
     }
     /// @brief Sort the current playlist reverse lexicographically.
     /// @return Whether the playlist existed to sort.
-    [[nodiscard]] static bool sortPlaylistReverseLexicographically(sys::str tag)
+    [[nodiscard]] static bool sortPlaylistReverseLexicographically(sys::str tag, const bool followPrevious = true)
     {
         return MusicPlayer::reorderCurrentPlaylist([](std::vector<Track>& playlist, sys::str tag)
         {
             std::ranges::sort(playlist, std::greater<>());
             MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
-        }, std::move(tag));
+        }, std::move(tag), followPrevious);
     }
 
     /// @brief Check if there is music loaded.
@@ -515,7 +521,7 @@ public:
             _retif(Error::PlaylistEmpty, playlist.empty());
 
             const sys::str tag(MusicPlayer::currentTag);
-            if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(tag) && !MusicPlayer::shufflePlaylist(tag))
+            if (MusicPlayer::lastPlaylistReorderWasReshuffle.contains(tag) && !MusicPlayer::shufflePlaylist(tag, false))
             {
                 MusicPlayer::lastPlaylistReorderWasReshuffle.erase(tag);
                 return Error::PlaylistEmpty;
