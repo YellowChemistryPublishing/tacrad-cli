@@ -3,7 +3,6 @@
 /// @file Console.h
 /// @brief Console component.
 
-#include <algorithm>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
@@ -85,7 +84,7 @@ private:
     }
     void syncIfNeeded()
     {
-        i32 lnWidth = i32(this->bounds.x_max) - i32(this->bounds.x_min);
+        const i32 lnWidth = i32(this->bounds.x_max) - i32(this->bounds.x_min);
         if (this->lastHistorySize == this->history.size() && this->lineWidth == lnWidth)
             return;
 
