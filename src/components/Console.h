@@ -1,5 +1,8 @@
 #pragma once
 
+/// @file Console.h
+/// @brief Console component.
+
 #include <algorithm>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -35,22 +38,24 @@ public:
 private:
     std::vector<sys::cstr> lastLines;
     sz linesSize = 0_uz;
-    i32 lineWidth = 1_i32;
+    i32 lineWidth = i32::highest();
     i32 selected = 0_i32;
 
     sz lastHistorySize = 0_uz;
     ui::Box bounds;
 
-    void renderLastLines()
+    void renderLastLines(const i32 withLineWidth)
     {
-        i32 maxLineWidth = std::max(i32(this->bounds.x_max) - i32(this->bounds.x_min), i32::highest());
-        if (this->lastHistorySize > this->history.size() || this->lineWidth != maxLineWidth)
+        if (this->lastHistorySize > this->history.size() || this->lineWidth != withLineWidth)
         {
             this->containerComp->DetachAllChildren();
             this->lastLines.clear();
             this->lastHistorySize = 0_uz;
-            this->lineWidth = maxLineWidth;
+            this->lineWidth = withLineWidth;
         }
+
+        if (withLineWidth <= 0)
+            return;
 
         this->linesSize = this->lastLines.size();
         for (const auto& entry : std::span(this->history.begin() + *ssz(this->lastHistorySize), this->history.end()))
@@ -60,7 +65,7 @@ private:
                 if (text.empty())
                     return;
 
-                stringSplitLengthConstrained(text, sz(maxLineWidth), this->lastLines);
+                stringSplitLengthConstrained(text, sz(withLineWidth), this->lastLines);
             };
 
             process(entry.cmd);
@@ -80,10 +85,11 @@ private:
     }
     void syncIfNeeded()
     {
-        if (this->lastHistorySize == this->history.size())
+        i32 lnWidth = i32(this->bounds.x_max) - i32(this->bounds.x_min);
+        if (this->lastHistorySize == this->history.size() && this->lineWidth == lnWidth)
             return;
 
-        this->renderLastLines();
+        this->renderLastLines(lnWidth);
         this->sync();
     }
 
