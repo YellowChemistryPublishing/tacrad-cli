@@ -85,3 +85,8 @@ install(
     DESTINATION bin
     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
+
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_SOURCE_IGNORE_FILES "/[^/]*build/" "/checks.json" "/Doxyfile" "/workflows/" "libcxxext/sys.Text/data_unicode/" "/\\\\.[^/]+/")
+#                                            ^ Library consumers don't need.                                             ^ Dirs beginning with a dot, i.e. `.cache/`.
+include(CPack)

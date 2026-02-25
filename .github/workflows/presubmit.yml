@@ -26,34 +26,62 @@ jobs:
                     - name: Tools
                       os: ubuntu-latest
                       checkset: generic-tools
-                    - name: Linux [x86_64] (x86_64-gcc)
+                    - name: Linux [x86_64] (x86_64-gcc) (Build and Test)
                       os: ubuntu-latest
-                      checkset: x86_64-linux-gcc
-                    - name: Linux [x86_64] (x86_64-clang)
+                      checkset: x86_64-linux-gcc-debug
+                    - name: Linux [x86_64] (x86_64-gcc) (Build and Package)
                       os: ubuntu-latest
-                      checkset: x86_64-linux-clang
-                    - name: Linux [x86_64] (i686-gcc)
+                      checkset: x86_64-linux-gcc-relwithdebinfo
+                    - name: Linux [x86_64] (x86_64-clang) (Build and Test)
                       os: ubuntu-latest
-                      checkset: i686-linux-gcc
-                    - name: Linux [x86_64] (i686-clang)
+                      checkset: x86_64-linux-clang-debug
+                    - name: Linux [x86_64] (x86_64-clang) (Build and Package)
                       os: ubuntu-latest
-                      checkset: i686-linux-clang
-                    - name: msys2 [x86_64] (x86_64-clang)
+                      checkset: x86_64-linux-clang-relwithdebinfo
+                    - name: Linux [x86_64] (i686-gcc) (Build and Test)
+                      os: ubuntu-latest
+                      checkset: i686-linux-gcc-debug
+                    - name: Linux [x86_64] (i686-gcc) (Build and Package)
+                      os: ubuntu-latest
+                      checkset: i686-linux-gcc-relwithdebinfo
+                    - name: Linux [x86_64] (i686-clang) (Build and Test)
+                      os: ubuntu-latest
+                      checkset: i686-linux-clang-debug
+                    - name: Linux [x86_64] (i686-clang) (Build and Package)
+                      os: ubuntu-latest
+                      checkset: i686-linux-clang-relwithdebinfo
+                    - name: msys2 [x86_64] (x86_64-clang) (Build and Test)
                       os: windows-latest
-                      checkset: x86_64-msysclang64-clang
+                      checkset: x86_64-msysclang64-clang-debug
                       msystem: CLANG64
                       packages: base-devel mingw-w64-clang-x86_64-python
-                    - name: msys2 [x86_64] (x86_64-gcc)
+                    - name: msys2 [x86_64] (x86_64-clang) (Build and Package)
                       os: windows-latest
-                      checkset: x86_64-msys64-gcc
+                      checkset: x86_64-msysclang64-clang-relwithdebinfo
+                      msystem: CLANG64
+                      packages: base-devel mingw-w64-clang-x86_64-python
+                    - name: msys2 [x86_64] (x86_64-gcc) (Build and Test)
+                      os: windows-latest
+                      checkset: x86_64-msys64-gcc-debug
                       msystem: MINGW64
                       packages: base-devel mingw-w64-x86_64-python
-                    - name: Win32 [x86_64] (x86_64-msvc)
+                    - name: msys2 [x86_64] (x86_64-gcc) (Build and Package)
                       os: windows-latest
-                      checkset: x86_64-win32-msvc
-                    - name: Win32 [x86_64] (i686-msvc)
+                      checkset: x86_64-msys64-gcc-relwithdebinfo
+                      msystem: MINGW64
+                      packages: base-devel mingw-w64-x86_64-python
+                    - name: Win32 [x86_64] (x86_64-msvc) (Build and Test)
                       os: windows-latest
-                      checkset: i686-win32-msvc
+                      checkset: x86_64-win32-msvc-debug
+                    - name: Win32 [x86_64] (x86_64-msvc) (Build and Package)
+                      os: windows-latest
+                      checkset: x86_64-win32-msvc-relwithdebinfo
+                    - name: Win32 [x86_64] (i686-msvc) (Build and Test)
+                      os: windows-latest
+                      checkset: i686-win32-msvc-debug
+                    - name: Win32 [x86_64] (i686-msvc) (Build and Package)
+                      os: windows-latest
+                      checkset: i686-win32-msvc-relwithdebinfo
         defaults:
             run:
                 shell: ${{ matrix.msystem && 'msys2 {0}' || 'bash' }}
@@ -86,10 +114,52 @@ jobs:
               if: always()
               run: python3 libcxxext/workflows/all_findings.py -d=. -s -v >> $GITHUB_STEP_SUMMARY
 
+            - name: Upload Coverage Report
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-${{ matrix.checkset }}
+                  path: "*-build/coverage/"
+                  if-no-files-found: ignore
+
             - name: Upload Documentation
-              if: always() && matrix.checkset == 'generic-tools'
+              if: always()
               uses: actions/upload-artifact@v4
               with:
                   name: docs-build
                   path: "docs-build/"
                   if-no-files-found: ignore
+
+            - name: Upload Build Artifacts
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                  name: artifacts-${{ matrix.checkset }}
+                  path: artifacts-build/**
+                  if-no-files-found: ignore
+
+    release:
+        name: Canary Release
+        needs: presubmit
+        if: (always() && github.ref == 'refs/heads/main')
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Download Artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: artifacts
+                  pattern: "artifacts-*"
+                  merge-multiple: true
+
+            - name: Post Canary Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: main
+                  name: "Canary 🪶"
+                  body: "Latest canary release courtesy of automatic build and package."
+                  prerelease: true
+                  files: artifacts/**
+                  fail_on_unmatched_files: false
+                  generate_release_notes: true
