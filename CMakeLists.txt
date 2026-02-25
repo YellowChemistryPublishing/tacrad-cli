@@ -23,7 +23,10 @@ add_subdirectory(miniaudio EXCLUDE_FROM_ALL)
 set(BUILD_BINDINGS OFF CACHE INTERNAL "" FORCE)
 set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(taglib EXCLUDE_FROM_ALL)
+target_compile_options(tag PRIVATE $<$<CXX_COMPILER_ID:GNU>:-Wno-sign-compare>) # Spurious.
+
 add_library(taglib INTERFACE)
+target_compile_options(taglib INTERFACE $<$<CXX_COMPILER_ID:GNU>:-Wno-stringop-overflow>) # Spurious. Happens when optimizations are enabled.
 target_include_directories(taglib INTERFACE
     taglib taglib/taglib taglib/taglib/toolkit taglib/taglib/mpeg/id3v2 taglib/taglib/flac
     ${CMAKE_BINARY_DIR}/tag/include
