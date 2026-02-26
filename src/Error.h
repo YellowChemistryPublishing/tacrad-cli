@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Error.h
+
 #include <cstddef>
 #include <ios>
 #include <miniaudio.h>
@@ -19,17 +21,17 @@ private:
     constexpr explicit Error(const char (&str)[N]) : _str(_as(const char*, str))
     { }
 public:
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    constexpr operator std::string_view() const { return this->_str; }
+    /// @brief Convert to a `std::string_view` (with underlying buffer of static storage duration).
+    constexpr operator std::string_view() const { return this->_str; } // NOLINT(hicpp-explicit-conversions)
 
     friend bool operator==(const Error& a, const Error& b) = default;
 
-    static const Error DirectoryNotFound;
+    static const Error DirectoryNotFound; ///< @brief @anchor Error_DirectoryNotFound
 
-    static const Error PlaylistEmpty;
-    static const Error TrackNotLoaded;
-    static const Error TrackNotFound;
-    static const Error TrackSeekOutOfRange;
+    static const Error PlaylistEmpty;       ///< @brief @anchor Error_PlaylistEmpty
+    static const Error TrackNotLoaded;      ///< @brief @anchor Error_TrackNotLoaded
+    static const Error TrackNotFound;       ///< @brief @anchor Error_TrackNotFound
+    static const Error TrackSeekOutOfRange; ///< @brief @anchor Error_TrackSeekOutOfRange
 
     /// @brief Create an `Error` from a C++ error category.
     static Error fromCategory(const std::error_category& cat)

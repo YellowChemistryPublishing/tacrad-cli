@@ -1,7 +1,6 @@
 #pragma once
 
 /// @file Console.h
-/// @brief Console component.
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -32,8 +31,8 @@ namespace ui = ftxui;
 class ConsoleImpl final : public ui::ComponentBase
 {
 public:
-    // Command invocation (and output) history.
-    std::vector<CmdInv::Entry> history; // NOLINT(misc-non-private-member-variables-in-classes)
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    std::vector<CmdInv::Entry> history; ///< Command invocation (and output) history.
 private:
     std::vector<sys::cstr> lastLines;
     sz linesSize = 0_uz;

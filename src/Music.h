@@ -1,7 +1,9 @@
 #pragma once
 
+/// @file Music.h
+
 #include <CompilerWarnings.h>
-_push_nowarn_c_cast();
+_push_nowarn_c_cast(); ///< @private
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -30,7 +32,7 @@ _push_nowarn_c_cast();
 #include <utility>
 #include <vector>
 
-_pop_nowarn_c_cast();
+_pop_nowarn_c_cast(); ///< @private
 
 #include <module/sys>
 #include <module/sys.Text>
@@ -43,6 +45,8 @@ _pop_nowarn_c_cast();
 
 namespace ui = ftxui;
 
+/// @brief Music track loading and playing functionality.
+/// @note Static class.
 class MusicPlayer final
 {
     static inline std::random_device seeder;
@@ -110,15 +114,15 @@ public:
     {
         // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
 
-        std::filesystem::path file;
+        std::filesystem::path file; ///< Path to the audio file.
 
-        sys::cstr titleDisplay = "[empty]";
-        sys::cstr subtitleDisplay = "";
-        sys::cstr artistsDisplay = "unknown";
-        sys::cstr tagsDisplay = "[none]";
-        sys::cstr akaDisplay = "";
+        sys::cstr titleDisplay = "[empty]";   ///< Rendered title of the track.
+        sys::cstr subtitleDisplay = "";       ///< Rendered subtitle of the track.
+        sys::cstr artistsDisplay = "unknown"; ///< Rendered artists of the track.
+        sys::cstr tagsDisplay = "[none]";     ///< Rendered tags of the track.
+        sys::cstr akaDisplay = "";            ///< Rendered aka. of the track.
 
-        std::vector<sys::str> aka;
+        std::vector<sys::str> aka; ///< Aliases for the track.
 
         // NOLINTEND(misc-non-private-member-variables-in-classes)
 
@@ -215,8 +219,9 @@ public:
         return ret;
     }
 
-    static inline sys::str currentTag = u8"all";
-    static inline i32 currentTrack = 0_i32;
+    static inline sys::str currentTag = u8"all"; ///< Currently selected tag.
+    static inline i32 currentTrack = 0_i32;      ///< Currently selected track index.
+
     /// @brief Retrieve the playlist with `tag`.
     /// @return Playlist, or static empty vector if not found.
     [[nodiscard]] static const std::vector<Track>& playlistWithTag(const std::u8string_view tag)

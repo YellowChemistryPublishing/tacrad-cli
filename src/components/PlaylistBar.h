@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file PlaylistBar.h
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
@@ -82,6 +84,8 @@ class PlaylistBarImpl final : public ui::ComponentBase
                                             .animated_colors {} }) }) |
         hpad;
 public:
+    /// @internal
+    /// @private
     explicit PlaylistBarImpl(std::shared_ptr<PlaylistImpl> playlistComp, std::shared_ptr<ConsoleImpl> console) :
         playlistComp(std::move(playlistComp)), consoleComp(std::move(console))
     {

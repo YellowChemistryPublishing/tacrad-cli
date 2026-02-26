@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Details.h
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/event.hpp>
@@ -56,6 +58,8 @@ class DetailsImpl final : public ui::ComponentBase
                      ui::filler() });
     });
 public:
+    /// @internal
+    /// @private
     DetailsImpl(std::shared_ptr<TagSelectorImpl> tagSelectorComp, std::shared_ptr<PlaylistImpl> playlistComp) :
         tagSelectorComp(std::move(tagSelectorComp)), playlistComp(std::move(playlistComp))
     {

@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Terminal.h
+
 #include <cctype>
 #include <chrono>
 #include <condition_variable>
@@ -141,6 +143,8 @@ class TerminalImpl final : public ui::ComponentBase
         return false;
     });
 public:
+    /// @internal
+    /// @private
     explicit TerminalImpl(std::shared_ptr<ConsoleImpl> consoleComp, std::weak_ptr<StatusBarImpl> statusBar) : consoleComp(std::move(consoleComp)), statusBar(std::move(statusBar))
     {
         this->Add(this->inputComp);
@@ -178,7 +182,7 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Termin
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
         {
-            for (const char32_t c : sys::str32_view(terminal->cmd))
+            for (const char32_t c : sys::codepoint_view(terminal->cmd))
                 if (!sys::ch::is_whitespace(c))
                     return false;
 

@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file CmdProc.h
+
 #include <cctype>
 #include <format>
 #include <iterator>
@@ -25,6 +27,7 @@ class CmdProc final
 public:
     CmdProc() = delete;
 
+    /// @brief Parse `cmd` into a vector of arguments.
     [[nodiscard]] static std::vector<sys::cstr> argvParse(std::string_view cmd)
     {
         std::vector<sys::cstr> argv;
@@ -66,6 +69,7 @@ public:
         return argv;
     }
 
+    /// @brief Parse and invoke `cmd`.
     static void invoke(std::vector<CmdInv::Entry>& history, sys::cstr cmd, std::weak_ptr<StatusBarImpl> statusBarPtr = {})
     {
         const std::vector<sys::cstr> argv = CmdProc::argvParse(cmd);
@@ -84,6 +88,7 @@ public:
                 debugLog("Failed to show last command output on status bar.");
     }
 
+    /// @brief Invoke a typed quick action `cmd`.
     [[nodiscard]] static bool invokeQuickAction(std::vector<CmdInv::Entry>& history, const std::string_view cmd)
     {
         const sz trimBeg = cmd.find_first_not_of(' ', !cmd.empty() && cmd[0] == Config::QuickActionKey ? 1 : 0);

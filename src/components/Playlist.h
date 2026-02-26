@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Playlist.h
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
@@ -98,17 +100,24 @@ class PlaylistImpl final : public ui::ComponentBase
         return false;
     });
 public:
+    /// @internal
+    /// @private
     explicit PlaylistImpl(std::shared_ptr<TagSelectorImpl> tagSelComp, std::shared_ptr<ConsoleImpl> consoleComp) :
         tagSelComp(std::move(tagSelComp)), consoleComp(std::move(consoleComp))
     {
         this->Add(this->displayComp);
     }
 
+    /// @brief Retrieve the currently selected track.
     [[nodiscard]] i32 selectedTrack() const { return this->selected; }
+    /// @brief Set the currently selected track.
     void selectedTrack(const i32 val) { this->selected = val; }
+    /// @brief Retrieve the currently playing track.
     [[nodiscard]] i32 currentTrack() const { return this->curTrack; }
+    /// @brief Set the currently playing track.
     void currentTrack(const i32 val) { this->curTrack = val; }
 
+    /// @brief Retrieve the associated tag selector component.
     [[nodiscard]] std::shared_ptr<TagSelectorImpl> tagSelector() const { return this->tagSelComp; }
 };
 

@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file TabSelect.h
+
 #include <ftxui/component/animation.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -43,6 +45,8 @@ class TabSelectImpl final : public ui::ComponentBase
         return ret; // NOLINT(clang-analyzer-core.StackAddressEscape): Spurious.
     }());
 public:
+    /// @internal
+    /// @private
     explicit TabSelectImpl(std::shared_ptr<TabContainerImpl> containerComp) : containerComp(std::move(containerComp)) { this->Add(this->selectorComp); }
 };
 

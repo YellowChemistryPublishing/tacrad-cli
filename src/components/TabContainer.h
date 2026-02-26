@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file TabContainer.h
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/event.hpp>
@@ -16,9 +18,11 @@ namespace ui = ftxui;
 class TabContainerImpl final : public ui::ComponentBase
 {
 public:
-    // Currently selected tab index.
-    i32 selectedTab = 0_i32; // NOLINT(misc-non-private-member-variables-in-classes)
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
+    i32 selectedTab = 0_i32; ///< Currently selected tab index.
 
+    /// @internal
+    /// @private
     explicit TabContainerImpl(ui::Components components) { this->Add(ui::Container::Tab(std::move(components), &*this->selectedTab)); }
 };
 
