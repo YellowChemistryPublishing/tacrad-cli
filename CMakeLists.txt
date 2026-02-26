@@ -23,7 +23,9 @@ add_subdirectory(miniaudio EXCLUDE_FROM_ALL)
 set(BUILD_BINDINGS OFF CACHE INTERNAL "" FORCE)
 set(BUILD_TESTING OFF CACHE INTERNAL "" FORCE)
 add_subdirectory(taglib EXCLUDE_FROM_ALL)
+
 add_library(taglib INTERFACE)
+target_compile_options(taglib INTERFACE $<$<CXX_COMPILER_ID:GNU>:-Wno-sign-compare> $<$<CXX_COMPILER_ID:GNU>:-Wno-stringop-overflow>) # Spurious. Happens when optimizations are enabled.
 target_include_directories(taglib INTERFACE
     taglib taglib/taglib taglib/taglib/toolkit taglib/taglib/mpeg/id3v2 taglib/taglib/flac
     ${CMAKE_BINARY_DIR}/tag/include
@@ -85,3 +87,8 @@ install(
     DESTINATION bin
     FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
 )
+
+set(CPACK_GENERATOR "ZIP")
+set(CPACK_SOURCE_IGNORE_FILES "/[^/]*build/" "/checks.json" "/Doxyfile" "/workflows/" "libcxxext/sys.Text/data_unicode/" "/\\\\.[^/]+/")
+#                                            ^ Library consumers don't need.                                             ^ Dirs beginning with a dot, i.e. `.cache/`.
+include(CPack)
