@@ -1,4 +1,5 @@
 {
+    "comment": "(Roughly) Sync with `libcxxext/checks.json`.",
     "checks":  [
         {
             "name":   "check:cppconf",
@@ -10,7 +11,7 @@
             "script": "libcxxext/workflows/cppbuild.py",
             "with":   ["-m=${target_arch}", "-p=${run_on}", "-cl=${compiler_name}", "-c=${config}", "-gen=${gen}", "-d=.", "-b=${target_arch}-${run_on}-${compiler_name}-build"]
         },
-        { "name": "check:cppfmt", "script": "libcxxext/workflows/cppfmt.py", "with": ["-p=${run_on}", "-f=^(?!(.*build/|install/|FTXUI/|libcxxext/|miniaudio/|taglib/)).*\\.(h|inl|cpp)$"] },
+        { "name": "check:cppfmt", "script": "libcxxext/workflows/cppfmt.py", "with": ["-p=${run_on}", "-f=^(?!(.*build/|libcxxext/|FTXUI/|taglib/|miniaudio/)).*\\.(h|inl|cpp)$"] },
         { "name": "check:cpplint", "script": "libcxxext/workflows/cpplint.py", "with": ["-p=${run_on}", "-cl=${compiler_name}", "-d=.", "-b=${target_arch}-${run_on}-${compiler_name}-build"] },
         {
             "name":   "check:cpppack",

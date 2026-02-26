@@ -26,62 +26,79 @@ jobs:
                     - name: Tools
                       os: ubuntu-latest
                       checkset: generic-tools
+                      builddir: x86_64-linux-clang-build
                     - name: Linux [x86_64] (x86_64-gcc) (Build and Test)
                       os: ubuntu-latest
                       checkset: x86_64-linux-gcc-debug
+                      builddir: x86_64-linux-gcc-build
                     - name: Linux [x86_64] (x86_64-gcc) (Build and Package)
                       os: ubuntu-latest
                       checkset: x86_64-linux-gcc-relwithdebinfo
+                      builddir: x86_64-linux-gcc-build
                     - name: Linux [x86_64] (x86_64-clang) (Build and Test)
                       os: ubuntu-latest
                       checkset: x86_64-linux-clang-debug
+                      builddir: x86_64-linux-clang-build
                     - name: Linux [x86_64] (x86_64-clang) (Build and Package)
                       os: ubuntu-latest
                       checkset: x86_64-linux-clang-relwithdebinfo
+                      builddir: x86_64-linux-clang-build
                     - name: Linux [x86_64] (i686-gcc) (Build and Test)
                       os: ubuntu-latest
                       checkset: i686-linux-gcc-debug
+                      builddir: i686-linux-gcc-build
                     - name: Linux [x86_64] (i686-gcc) (Build and Package)
                       os: ubuntu-latest
                       checkset: i686-linux-gcc-relwithdebinfo
+                      builddir: i686-linux-gcc-build
                     - name: Linux [x86_64] (i686-clang) (Build and Test)
                       os: ubuntu-latest
                       checkset: i686-linux-clang-debug
+                      builddir: i686-linux-clang-build
                     - name: Linux [x86_64] (i686-clang) (Build and Package)
                       os: ubuntu-latest
                       checkset: i686-linux-clang-relwithdebinfo
+                      builddir: i686-linux-clang-build
                     - name: msys2 [x86_64] (x86_64-clang) (Build and Test)
                       os: windows-latest
                       checkset: x86_64-msysclang64-clang-debug
                       msystem: CLANG64
                       packages: base-devel mingw-w64-clang-x86_64-python
+                      builddir: x86_64-msysclang64-clang-build
                     - name: msys2 [x86_64] (x86_64-clang) (Build and Package)
                       os: windows-latest
                       checkset: x86_64-msysclang64-clang-relwithdebinfo
                       msystem: CLANG64
                       packages: base-devel mingw-w64-clang-x86_64-python
+                      builddir: x86_64-msysclang64-clang-build
                     - name: msys2 [x86_64] (x86_64-gcc) (Build and Test)
                       os: windows-latest
                       checkset: x86_64-msys64-gcc-debug
                       msystem: MINGW64
                       packages: base-devel mingw-w64-x86_64-python
+                      builddir: x86_64-msys64-gcc-build
                     - name: msys2 [x86_64] (x86_64-gcc) (Build and Package)
                       os: windows-latest
                       checkset: x86_64-msys64-gcc-relwithdebinfo
                       msystem: MINGW64
                       packages: base-devel mingw-w64-x86_64-python
+                      builddir: x86_64-msys64-gcc-build
                     - name: Win32 [x86_64] (x86_64-msvc) (Build and Test)
                       os: windows-latest
                       checkset: x86_64-win32-msvc-debug
+                      builddir: x86_64-win32-msvc-build
                     - name: Win32 [x86_64] (x86_64-msvc) (Build and Package)
                       os: windows-latest
                       checkset: x86_64-win32-msvc-relwithdebinfo
+                      builddir: x86_64-win32-msvc-build
                     - name: Win32 [x86_64] (i686-msvc) (Build and Test)
                       os: windows-latest
                       checkset: i686-win32-msvc-debug
+                      builddir: i686-win32-msvc-build
                     - name: Win32 [x86_64] (i686-msvc) (Build and Package)
                       os: windows-latest
                       checkset: i686-win32-msvc-relwithdebinfo
+                      builddir: i686-win32-msvc-build
         defaults:
             run:
                 shell: ${{ matrix.msystem && 'msys2 {0}' || 'bash' }}
@@ -104,22 +121,29 @@ jobs:
               with:
                   python-version: "3.x"
 
+            - name: Cache Build Directory
+              uses: actions/cache@v4
+              with:
+                  path: ${{ github.workspace }}/${{ matrix.builddir }}/
+                  key: build-${{ matrix.checkset }}-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+                  restore-keys: build-${{ matrix.checkset }}-
+
             - name: Run Checkset
               env:
                   PYTHONUNBUFFERED: "1"
                   CPLUS_INCLUDE_PATH: /usr/include/c++/14:/usr/include/x86_64-linux-gnu/c++/14
-              run: python3 libcxxext/workflows/all_push.py -d=. -cs=${{ matrix.checkset }} -s -v
+              run: python3 '${{ github.workspace }}/libcxxext/workflows/all_push.py' -d=. -cs=${{ matrix.checkset }} -v
 
             - name: Upload Findings
               if: always()
-              run: python3 libcxxext/workflows/all_findings.py -d=. -s -v >> $GITHUB_STEP_SUMMARY
+              run: python3 '${{ github.workspace }}/libcxxext/workflows/all_findings.py' -d=. -s -v >> $GITHUB_STEP_SUMMARY
 
             - name: Upload Coverage Report
               if: always()
               uses: actions/upload-artifact@v4
               with:
                   name: coverage-${{ matrix.checkset }}
-                  path: "*-build/coverage/"
+                  path: ${{ github.workspace }}/*-build/coverage/
                   if-no-files-found: ignore
 
             - name: Upload Documentation
@@ -127,7 +151,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: docs-build
-                  path: "docs-build/"
+                  path: ${{ github.workspace }}/docs-build/
                   if-no-files-found: ignore
 
             - name: Upload Build Artifacts
@@ -135,31 +159,57 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: artifacts-${{ matrix.checkset }}
-                  path: artifacts-build/**
+                  path: ${{ github.workspace }}/artifacts-build/**
                   if-no-files-found: ignore
 
     release:
         name: Canary Release
         needs: presubmit
-        if: (always() && github.ref == 'refs/heads/main')
+        if: success() && github.ref == 'refs/heads/main'
         runs-on: ubuntu-latest
         permissions:
             contents: write
         steps:
+            - uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
             - name: Download Artifacts
               uses: actions/download-artifact@v4
               with:
-                  path: artifacts
-                  pattern: "artifacts-*"
+                  path: ${{ github.workspace }}/artifacts/
+                  pattern: artifacts-*
                   merge-multiple: true
+
+            - name: Create Canary Tag
+              id: tag
+              shell: python
+              run: |
+                  import os
+                  import subprocess
+                  import sys
+                  from datetime import datetime, timezone
+
+                  tag_name = f"canary-{datetime.now(timezone.utc).strftime('%Y%m%d')}.{os.environ['GITHUB_RUN_ID']}"
+
+                  try:
+                      subprocess.run(["git", "tag", tag_name], check=True)
+                      subprocess.run(["git", "push", "origin", tag_name], check=True)
+                      print(f"Successfully pushed tag: `{tag_name}`.")
+                  except subprocess.CalledProcessError as e:
+                      print(e)
+                      sys.exit(1)
+
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                      f.write(f"name={tag_name}\n")
 
             - name: Post Canary Release
               uses: softprops/action-gh-release@v2
               with:
-                  tag_name: main
+                  tag_name: ${{ steps.tag.outputs.name }}
                   name: "Canary 🪶"
                   body: "Latest canary release courtesy of automatic build and package."
                   prerelease: true
-                  files: artifacts/**
+                  files: ${{ github.workspace }}/artifacts/**
                   fail_on_unmatched_files: false
                   generate_release_notes: true
