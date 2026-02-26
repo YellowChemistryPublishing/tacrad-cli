@@ -151,7 +151,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: coverage-${{ matrix.checkset }}
-                  path: "*-build/coverage/"
+                  path: ${{ github.workspace }}/*-build/coverage/
                   if-no-files-found: ignore
 
             - name: Upload Documentation
