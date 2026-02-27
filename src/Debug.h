@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Debug.h
+
 // NOLINTBEGIN(portability-template-virtual-member-function, hicpp-signed-bitwise)
 
 #include <cassert>
@@ -15,7 +17,11 @@
 
 #include <module/sys>
 
-#define _impl_debug_log(stream_type)                                                                                   \
+/// @private
+/// @def _impl_debug_log(streamType)
+/// @brief Implementation of `debugLog` and `wdebugLog`.
+/// @param streamType The type of stream to log to.
+#define _impl_debug_log(streamType)                                                                                    \
     i32 retryCount = 0;                                                                                                \
     std::chrono::milliseconds retryDelay = std::chrono::milliseconds(32); /* NOLINT(readability-magic-numbers) */      \
     PrintAgain:                                                                                                        \
@@ -26,7 +32,7 @@
                                                                                                                        \
     try                                                                                                                \
     {                                                                                                                  \
-        stream_type out("out.log", stream_type::out | stream_type::app);                                               \
+        streamType out("out.log", streamType::out | streamType::app);                                                  \
         out << std::format(std::move(fmt), std::forward<Args>(args)...) << std::endl /* Deliberate. */;                \
         return;                                                                                                        \
     }                                                                                                                  \
@@ -46,13 +52,13 @@
 template <typename... Args>
 inline void debugLog(std::format_string<Args...> fmt, Args&&... args /* NOLINT(readability-identifier-naming) */) noexcept
 {
-    _impl_debug_log(std::ofstream);
+    _impl_debug_log(std::ofstream); ///< @private
 }
 /// @brief Logs a formatted message to the debug log file.
 template <typename... Args>
 inline void wdebugLog(std::wformat_string<Args...> fmt, Args&&... args /* NOLINT(readability-identifier-naming) */) noexcept
 {
-    _impl_debug_log(std::wofstream);
+    _impl_debug_log(std::wofstream); ///< @private
 }
 
 // NOLINTEND(portability-template-virtual-member-function, hicpp-signed-bitwise)

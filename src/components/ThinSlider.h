@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file ThinSlider.h
+
 #include <algorithm>
 #include <cmath>
 #include <ftxui/component/captured_mouse.hpp>
@@ -82,6 +84,8 @@ class ThinSliderImpl final : public ui::ComponentBase
         return false;
     });
 public:
+    /// @internal
+    /// @private
     explicit ThinSliderImpl(std::function<void(float)> onChange, std::function<void(float&)> onDraw, ui::ElementDecorator decoratePreReflect = ui::nothing) :
         onChange(std::move(onChange)), onDraw(std::move(onDraw)), decoratePreReflect(std::move(decoratePreReflect))
     {

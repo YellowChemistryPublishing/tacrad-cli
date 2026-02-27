@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Screen.h
+
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>

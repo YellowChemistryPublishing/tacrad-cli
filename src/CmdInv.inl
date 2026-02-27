@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file CmdInv.inl
+
 #include <algorithm>
 #include <format>
 #include <ftxui/component/animation.hpp>
@@ -61,8 +63,11 @@ public:
 
     CmdInv() = delete;
 
+    /// @brief Clear the command history.
     static void clearHistory(std::vector<Entry>& history) { history.clear(); }
+    /// @brief Push a command to the history.
     static void pushCommand(std::vector<Entry>& history, sys::cstr cmd) { history.emplace_back(Entry { .cmd = sys::cstr("$ ").append(cmd), .output = "" }); }
+    /// @brief Print a formatted string to the command history.
     template <typename... Args>
     static void println(std::vector<Entry>& history, std::format_string<Args...> fmt, Args&&... args)
     {
@@ -72,20 +77,33 @@ public:
         history.back().output.append(std::format(fmt, std::forward<Args>(args)...)).append('\n');
     }
 
+    /// @brief `help` command.
     static void help(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `clear` command.
     static void clear(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `quit` command.
     static void quit(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
 
+    /// @brief `togglePlayingOrPlay` command.
     static void togglePlayingOrPlay(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `resumeOrPlay` command.
     static void resumeOrPlay(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `play` command.
     static void play(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `resume` command.
     static void resume(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `pause` command.
     static void pause(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `seek` command.
     static void seek(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `volume` command.
     static void volume(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
+    /// @brief `stop` command.
     static void stop(std::vector<Entry>& history, const std::vector<sys::cstr>&);
+    /// @brief `next` command.
     static void next(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
 
+    /// @brief `playlist` command.
     static void playlist(std::vector<Entry>& history, const std::vector<sys::cstr>& cmd);
 private:
     struct Query

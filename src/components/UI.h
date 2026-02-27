@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file UI.h
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/event.hpp>
@@ -47,6 +49,8 @@ class UIImpl final : public ui::ComponentBase
               ui::yflex,
           ui::Renderer([] { return ui::separatorStyled(UserSettings::border); }), this->statBarComp });
 public:
+    /// @internal
+    /// @private
     explicit UIImpl(std::shared_ptr<ConsoleImpl> consoleComp) :
         playlistComp(std::static_pointer_cast<PlaylistImpl>(Playlist(tagListComp, consoleComp))),
         playlistPanelComp(ui::Container::Vertical({ playlistComp | ui::yflex, PlaylistBar(playlistComp, consoleComp) })),
@@ -55,7 +59,8 @@ public:
         this->Add(this->containerComp);
     }
 
-    std::shared_ptr<StatusBarImpl> statusBar() { return this->statBarComp; }
+    /// @brief Retrieve the associated status bar component.
+    [[nodiscard]] std::shared_ptr<StatusBarImpl> statusBar() { return this->statBarComp; }
 };
 
 /// @brief Create a `UIImpl` component.

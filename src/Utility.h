@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file Utility.h
+
 #include <ftxui/screen/box.hpp>
 #include <memory>
 #include <set>
@@ -15,7 +17,7 @@ namespace ui = ftxui;
 /// @brief Split a string by a delimiter, or until a maximum line length is reached.
 constexpr void stringSplitLengthConstrained(const std::string_view str, const sz len, std::vector<sys::cstr>& out)
 {
-    const sys::str32_view v = std::span(str);
+    const sys::codepoint_view v = std::span(str);
     for (auto it = v.begin(); it < v.end();)
     {
         auto itEnd = it;
@@ -36,7 +38,7 @@ constexpr void stringSplitLengthConstrained(const std::string_view str, const sz
 {
     u64 ccount = 0_u64;
     ssz trimFrom = 0_z;
-    const sys::str32_view v(str);
+    const sys::codepoint_view v(str);
     for (auto it = v.begin(); it != v.end();)
     {
         // Six space characters: ` * [text]|  `.

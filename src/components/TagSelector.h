@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file TagSelector.h
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
@@ -73,6 +75,7 @@ class TagSelectorImpl final : public ui::ComponentBase
 public:
     TagSelectorImpl() { this->Add(this->displayComp); }
 
+    /// @brief Retrieve the currently selected tag.
     [[nodiscard]] const sys::str& selectedTag() const { return this->selTag; }
 };
 

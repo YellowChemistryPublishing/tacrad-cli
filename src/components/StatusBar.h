@@ -1,5 +1,7 @@
 #pragma once
 
+/// @file StatusBar.h
+
 #include <chrono>
 #include <condition_variable>
 #include <format>
@@ -195,6 +197,8 @@ class StatusBarImpl final : public ui::ComponentBase
         return !this->message.empty();
     });
 public:
+    /// @internal
+    /// @private
     explicit StatusBarImpl(std::shared_ptr<ConsoleImpl> consoleComp) : consoleComp(std::move(consoleComp)) { this->Add(this->displayComp); }
 
     /// @brief Show a temporary message on the status bar.
