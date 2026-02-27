@@ -92,7 +92,9 @@ public:
         const sys::str fieldPrefix = sys::str(fieldName).append(u8'=');
 
         sz tagInfoBegin = comment.find_index(fieldPrefix);
+        _push_nowarn_msvc(_clwarn_msvc_discard_nodiscard); // Spurious.
         _retif(nullptr, tagInfoBegin == comment.size() || (tagInfoBegin != 0_uz && comment[(tagInfoBegin - 1_uz), unsafe()] != u8'\n'));
+        _pop_nowarn_msvc();
         tagInfoBegin += fieldPrefix.size();
         const sz tagInfoEnd = comment.find_index(u8'\n', tagInfoBegin);
 
