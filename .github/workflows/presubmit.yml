@@ -146,14 +146,6 @@ jobs:
                   path: ${{ github.workspace }}/*-build/coverage/
                   if-no-files-found: ignore
 
-            - name: Upload Coverage Report
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: coverage-${{ matrix.checkset }}
-                  path: ${{ github.workspace }}/*-build/coverage/
-                  if-no-files-found: ignore
-
             - name: Upload Documentation
               if: always()
               uses: actions/upload-artifact@v4

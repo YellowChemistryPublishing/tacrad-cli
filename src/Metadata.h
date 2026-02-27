@@ -92,7 +92,7 @@ public:
         const sys::str fieldPrefix = sys::str(fieldName).append(u8'=');
 
         sz tagInfoBegin = comment.find_index(fieldPrefix);
-        _retif(nullptr, tagInfoBegin == comment.size() || (tagInfoBegin != 0_uz && comment[tagInfoBegin - 1_uz, unsafe()] != u8'\n'));
+        _retif(nullptr, tagInfoBegin == comment.size() || (tagInfoBegin != 0_uz && comment[(tagInfoBegin - 1_uz), unsafe()] != u8'\n'));
         tagInfoBegin += fieldPrefix.size();
         const sz tagInfoEnd = comment.find_index(u8'\n', tagInfoBegin);
 
