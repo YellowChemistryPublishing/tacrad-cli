@@ -53,7 +53,7 @@ class PlaylistBarImpl final : public ui::ComponentBase
         const std::vector<std::error_code> errs = MusicPlayer::searchForTracks();
         if (!errs.empty())
         {
-            sys::cstr log = "[log.warn] Searching for playable music encoutered some errors, playlists may be incomplete:";
+            sys::cstr log = "[log.warn] Searching for playable music encountered some errors, playlists may be incomplete!";
             for (const std::error_code& ec : errs)
                 log.append("\n    ").append(ec.message());
             CmdInv::println(this->consoleComp->history, "{}", log);
