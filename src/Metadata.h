@@ -2,6 +2,7 @@
 
 /// @file Metadata.h
 
+#include <CompilerWarnings.h>
 #include <StringEx.h>
 #include <string_view>
 #include <taglib/fileref.h>
@@ -92,9 +93,9 @@ public:
         const sys::str fieldPrefix = sys::str(fieldName).append(u8'=');
 
         sz tagInfoBegin = comment.find_index(fieldPrefix);
-        _push_nowarn_msvc(_clwarn_msvc_discard_nodiscard); // Spurious.
+        _nowarn_begin_one_msvc(_clwarn_msvc_discarding_return_value_of_function_with_nodiscard_attribute); // Spurious.
         _retif(nullptr, tagInfoBegin == comment.size() || (tagInfoBegin != 0_uz && comment[(tagInfoBegin - 1_uz), unsafe()] != u8'\n'));
-        _pop_nowarn_msvc();
+        _nowarn_end_msvc();
         tagInfoBegin += fieldPrefix.size();
         const sz tagInfoEnd = comment.find_index(u8'\n', tagInfoBegin);
 
@@ -110,16 +111,16 @@ public:
 
         for (sys::str& s : ret)
             s.trim();
-        for (auto it = ret.begin(); it != ret.end();)
+        for (sz i = 0_uz; i < ret.size();)
         {
-            if (it->empty())
+            if (ret[i].empty())
             {
-                if (it != ret.end() - 1_z)
-                    std::swap(*it, ret.back());
+                if (i < ssz(ret.size()) - 1_z)
+                    std::swap(ret[i], ret.back());
                 ret.pop_back();
             }
             else
-                ++it;
+                ++i;
         }
 
         return ret;

@@ -3,7 +3,7 @@
 /// @file Music.h
 
 #include <CompilerWarnings.h>
-_push_nowarn_c_cast(); ///< @private
+_nowarn_begin_c_cast();
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -32,7 +32,7 @@ _push_nowarn_c_cast(); ///< @private
 #include <utility>
 #include <vector>
 
-_pop_nowarn_c_cast(); ///< @private
+_nowarn_end_c_cast();
 
 #include <module/sys>
 #include <module/sys.Text>
@@ -474,8 +474,8 @@ public:
         if (MusicPlayer::isPlaying.load())
             _retif(resRes.err(), auto resRes = MusicPlayer::resume(); !resRes);
 
-        soundDtor.release();
-        audDtor.release();
+        soundDtor.release(unsafe());
+        audDtor.release(unsafe());
         return {};
     }
 
@@ -550,7 +550,7 @@ public:
 
         _retif(playRes, auto playRes = MusicPlayer::play(); !playRes);
 
-        playingDtor.release();
+        playingDtor.release(unsafe());
         return {};
     }
 };
