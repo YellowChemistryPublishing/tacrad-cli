@@ -39,7 +39,7 @@ inline void CmdInv::help(std::vector<CmdInv::Entry>& history, const std::vector<
 
         if (!cmdName.empty())
             cmdName.pop_back(unsafe());
-        if (!query.exactCount)
+        if (query.countAtLeast > 0_uz)
             cmdName.append(" ...");
 
         CmdInv::println(history, "{}\n    {}\n    {}", cmdName, query.usage, query.desc);

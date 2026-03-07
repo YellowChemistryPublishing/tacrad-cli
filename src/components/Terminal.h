@@ -41,6 +41,7 @@ namespace ui = ftxui;
 class TerminalImpl final : public ui::ComponentBase
 {
     std::string cmd;
+    i32 cursorPos = 0_i32;
 
     std::chrono::steady_clock::time_point clearAfter = std::chrono::steady_clock::time_point::max();
     std::mutex clearAfterLock;
@@ -83,12 +84,12 @@ class TerminalImpl final : public ui::ComponentBase
 
     static ui::Element postProcessInput(ui::InputState state)
     {
-        if (state.focused)
-        {
-            state.element |= ui::focus;
-            if (!state.is_placeholder)
-                state.element |= ui::focusCursorBlockBlinking;
-        }
+        // if (state.focused)
+        // {
+        //     state.element |= ui::focus;
+        //     if (!state.is_placeholder)
+        //         state.element |= ui::focusCursorBlockBlinking;
+        // }
 
         if (state.is_placeholder)
             state.element = ui::hbox({ std::move(state.element) | ui::xflex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |
@@ -96,7 +97,7 @@ class TerminalImpl final : public ui::ComponentBase
         else
             state.element = ui::hbox({ std::move(state.element), ui::filler() });
 
-        return state.element;
+        return std::move(state.element);
     }
     void onInputChange()
     {
@@ -129,11 +130,21 @@ class TerminalImpl final : public ui::ComponentBase
                                                           .placeholder = std::format("{} for quick action...", Config::QuickActionKey),
                                                           .transform = TerminalImpl::postProcessInput,
                                                           .multiline = false,
+                                                          .insert = false,
                                                           .on_change = [this]() -> void { this->onInputChange(); },
-                                                          .on_enter = [this]() -> void { this->onInputEnter(); } }) |
+                                                          .on_enter = [this]() -> void { this->onInputEnter(); },
+                                                          .cursor_position = &*this->cursorPos }) |
         ui::reflect(this->bounds) |
         ui::CatchEvent([this](ui::Event event)
     {
+        if (event.is_character() && event.character() != "\n" && event.character() != "\r")
+        {
+            this->cmd.append(event.character());
+            this->cursorPos = i32(this->cmd.size());
+            this->onInputChange();
+            return true;
+        }
+
         if (event.is_mouse() && event.mouse().button == ui::Mouse::Left && this->bounds.Contain(event.mouse().x, event.mouse().y))
         {
             this->TakeFocus();
@@ -182,10 +193,6 @@ inline ui::ComponentDecorator /* NOLINT(readability-identifier-naming) */ Termin
     {
         if (event == ui::Event::Character(Config::QuickActionKey))
         {
-            for (const char32_t c : sys::codepoint_view(terminal->cmd))
-                if (!sys::ch::is_whitespace(c))
-                    return false;
-
             terminal->cmd.clear();
             terminal->TakeFocus(); // Focus terminal, when user types quick action key.
         }

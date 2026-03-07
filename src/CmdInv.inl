@@ -111,30 +111,30 @@ private:
         std::vector<std::set<std::string_view>> startsWith;
         sys::cstr usage;
         sys::cstr desc;
-        bool exactCount = false;
+        sz countAtLeast = 0_uz;
     };
     static inline const std::vector<std::pair<Query, void (*)(std::vector<Entry>&, const std::vector<sys::cstr>&)>> ValidCommands {
-        { Query { .startsWith = { { "p", ":p" } }, .usage = "1. `p`, 2. `p <track query>...`", .desc = "1. Toggle play/pause, 2. Alias for `play`.", .exactCount = false },
-         &CmdInv::togglePlayingOrPlay                                                                                                                                                       },
-        { Query { .startsWith = { { ">" } }, .usage = "1. `>`, 2. `> <track query>...`", .desc = "1. Alias for `resume`, 2. Alias for `play`.", .exactCount = false },
-         &CmdInv::resumeOrPlay                                                                                                                                                              },
-        { Query { .startsWith = { { "play", "p" } }, .usage = "`play <track query>...`", .desc = "Look for a track matching the query and play it.", .exactCount = false },
-         &CmdInv::play                                                                                                                                                                      },
-        { Query { .startsWith = { { "resume", "r", ":r" } }, .usage = "`resume`", .desc = "Resume current track.", .exactCount = true },                                    &CmdInv::resume },
-        { Query { .startsWith = { { "pause", "p", "#", ":#" } }, .usage = "`pause`", .desc = "Pause current track.", .exactCount = true },                                  &CmdInv::pause  },
-        { Query { .startsWith = { { "seek", "s", "=" } }, .usage = "`seek <seconds>`", .desc = "Seek to the given position in seconds.", .exactCount = true },              &CmdInv::seek   },
-        { Query { .startsWith = { { "volume", "vol", "v" } }, .usage = "`vol <linear volume>`", .desc = "Set the volume to the given linear value.", .exactCount = true },
-         &CmdInv::volume                                                                                                                                                                    },
-        { Query { .startsWith = { { "stop", "s", ":x" } }, .usage = "`stop`", .desc = "Stop playing music.", .exactCount = true },                                          &CmdInv::stop   },
-        { Query { .startsWith = { { "next", "n", ":n" } }, .usage = "`next`", .desc = "Play the next track.", .exactCount = true },                                         &CmdInv::next   },
+        { Query { .startsWith = { { "p", ":p" } }, .usage = "1. `p`, 2. `p <track query>...`", .desc = "1. Toggle play/pause, 2. Alias for `play`.", .countAtLeast = 0_uz },
+         &CmdInv::togglePlayingOrPlay                                                                                                                                                        },
+        { Query { .startsWith = { { ">" } }, .usage = "1. `>`, 2. `> <track query>...`", .desc = "1. Alias for `resume`, 2. Alias for `play`.", .countAtLeast = 0_uz },
+         &CmdInv::resumeOrPlay                                                                                                                                                               },
+        { Query { .startsWith = { { "play", "p" } }, .usage = "`play <track query>...`", .desc = "Look for a track matching the query and play it.", .countAtLeast = 0_uz },
+         &CmdInv::play                                                                                                                                                                       },
+        { Query { .startsWith = { { "resume", "r", ":r" } }, .usage = "`resume`", .desc = "Resume current track.", .countAtLeast = 1_uz },                                   &CmdInv::resume },
+        { Query { .startsWith = { { "pause", "p", "#", ":#" } }, .usage = "`pause`", .desc = "Pause current track.", .countAtLeast = 1_uz },                                 &CmdInv::pause  },
+        { Query { .startsWith = { { "seek", "s", "=" } }, .usage = "`seek <seconds>`", .desc = "Seek to the given position in seconds.", .countAtLeast = 2_uz },             &CmdInv::seek   },
+        { Query { .startsWith = { { "volume", "vol", "v" } }, .usage = "`vol <linear volume>`", .desc = "Set the volume to the given linear value.", .countAtLeast = 2_uz },
+         &CmdInv::volume                                                                                                                                                                     },
+        { Query { .startsWith = { { "stop", "s", ":x" } }, .usage = "`stop`", .desc = "Stop playing music.", .countAtLeast = 1_uz },                                         &CmdInv::stop   },
+        { Query { .startsWith = { { "next", "n", ":n" } }, .usage = "`next`", .desc = "Play the next track.", .countAtLeast = 1_uz },                                        &CmdInv::next   },
         { Query { .startsWith = { { "playlist", "playl", "pl" } },
                   .usage = "`playlist [set <playlist name>]`\n    | `[--index|-i <index>]`\n    | `[--seq]`\n    | `[--revseq]`\n    | `[--shuffle|-sh]`\n    | `[--autoplay|-a]`",
                   .desc = "Playlist configuration.",
-                  .exactCount = false },
-         &CmdInv::playlist                                                                                                                                                                  },
-        { Query { .startsWith = { { "clear", "c", ":c" } }, .usage = "`clear`", .desc = "Clear the console.", .exactCount = true },                                         &CmdInv::clear  },
-        { Query { .startsWith = { { "exit", "q", ":q" } }, .usage = "`exit`", .desc = "Exit the program.", .exactCount = true },                                            &CmdInv::quit   },
-        { Query { .startsWith = { { "help", "h" } }, .usage = "`help`", .desc = "Show this help message.", .exactCount = false },                                           &CmdInv::help   }
+                  .countAtLeast = 2_uz },
+         &CmdInv::playlist                                                                                                                                                                   },
+        { Query { .startsWith = { { "clear", "c", ":c" } }, .usage = "`clear`", .desc = "Clear the console.", .countAtLeast = 1_uz },                                        &CmdInv::clear  },
+        { Query { .startsWith = { { "exit", "q", ":q" } }, .usage = "`exit`", .desc = "Exit the program.", .countAtLeast = 1_uz },                                           &CmdInv::quit   },
+        { Query { .startsWith = { { "help", "h" } }, .usage = "`help`", .desc = "Show this help message.", .countAtLeast = 0_uz },                                           &CmdInv::help   }
     };
 public:
     /// @brief Execute a command with its argv.
@@ -150,13 +150,12 @@ public:
             if (!setVecStartsWith(query.startsWith, argv))
                 return false;
 
-            if (query.exactCount && query.startsWith.size() != argv.size())
+            if (argv.size() < query.countAtLeast)
             {
-                CmdInv::println(history, "[log.error] Wrong number of arguments given to `{}`! ({} instead of {})", _as(std::string_view, argv[0]), argv.size(),
-                                query.startsWith.size());
+                CmdInv::println(history, "[log.error] Wrong number of arguments given to `{}`! ({} instead of >= {})", _as(std::string_view, argv[0]), argv.size(),
+                                *query.countAtLeast);
                 return false;
             }
-            _retif(false, argv.size() < query.startsWith.size());
 
             func(history, argv);
             return true;

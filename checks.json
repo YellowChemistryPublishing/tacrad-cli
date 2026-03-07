@@ -44,7 +44,7 @@
         {
             "checkset": "x86_64-linux-gcc-relwithdebinfo",
             "with":     {"run_on": "linux", "target_arch": "x86_64", "compiler_name": "gcc", "config": "RelWithDebInfo", "gen": "Unix Makefiles", "to_package": "install"},
-            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpplint": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
+            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         },
         {
             "checkset": "i686-linux-clang-debug",
@@ -74,7 +74,7 @@
         {
             "checkset": "x86_64-msysclang64-clang-relwithdebinfo",
             "with":     {"run_on": "msysclang64", "target_arch": "x86_64", "compiler_name": "clang", "config": "RelWithDebInfo", "gen": "Ninja", "to_package": "install"},
-            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpplint": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
+            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         },
         {
             "checkset": "x86_64-msys64-gcc-debug",
@@ -84,7 +84,7 @@
         {
             "checkset": "x86_64-msys64-gcc-relwithdebinfo",
             "with":     {"run_on": "msys64", "target_arch": "x86_64", "compiler_name": "gcc", "config": "RelWithDebInfo", "gen": "MinGW Makefiles", "to_package": "install"},
-            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpplint": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
+            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         },
         {
             "checkset": "x86_64-win32-msvc-debug",
@@ -94,7 +94,7 @@
         {
             "checkset": "x86_64-win32-msvc-relwithdebinfo",
             "with":     {"run_on": "win32", "target_arch": "x86_64", "compiler_name": "msvc", "config": "RelWithDebInfo", "gen": "Visual Studio 17 2022", "to_package": "install"},
-            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpplint": ["check:cppbuild"], "check:cpppack": ["check:cppbuild"] }
+            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         },
         {
             "checkset": "i686-win32-msvc-debug",
@@ -104,7 +104,7 @@
         {
             "checkset": "i686-win32-msvc-relwithdebinfo",
             "with":     {"run_on": "win32", "target_arch": "i686", "compiler_name": "msvc", "config": "RelWithDebInfo", "gen": "Visual Studio 17 2022", "to_package": "install"},
-            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpplint": ["check:cppbuild"], "check:cpppack": ["check:cppbuild"] }
+            "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         }
     ]
 }

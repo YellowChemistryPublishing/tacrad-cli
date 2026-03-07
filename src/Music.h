@@ -230,7 +230,7 @@ public:
         _retif(notFound, tag.empty());
 
         if (auto it = MusicPlayer::playlists.find(sys::str(tag)); it != MusicPlayer::playlists.end())
-            return it->second;
+            return std::move(it->second);
 
         return notFound;
     }
@@ -391,12 +391,12 @@ public:
             for (const Track& track : MusicPlayer::playlistWithTag(u8"all"))
             {
                 if (pred(track.fullDisplayTitle()))
-                    return track.file;
+                    return std::move(track.file);
                 if (pred(track.titleDisplay))
-                    return track.file;
+                    return std::move(track.file);
                 for (const auto& alt : track.aka)
                     if (pred(sys::cstr(alt)))
-                        return track.file;
+                        return std::move(track.file);
 
                 if (ec)
                     return Error::fromCategory(ec.category());
@@ -493,7 +493,9 @@ public:
             MusicPlayer::currentTag = u8"all";
             goto Again;
         }
+
         MusicPlayer::currentTrack = foundIndex < playlist.size() ? i32(foundIndex) : i32::sentinel();
+        _retif(Error::TrackNotFound, MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= playlist.size());
 
         return MusicPlayer::startMusic(found);
     }
