@@ -53,7 +53,7 @@ public:
         std::vector<sys::str> artists;
         for (const auto& s : f.file()->properties()["ARTIST"])
             for (sys::str& a : sys::str(s.to8Bit(true)).split(u8'/'))
-                sys::meta::append_to(artists, std::move(a));
+                sys::meta::generic_container_adaptor(artists).append_back(std::move(a));
 
         Artists ret;
         for (sys::str& s : artists)

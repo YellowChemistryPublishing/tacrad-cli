@@ -179,7 +179,7 @@ public:
                 auto tagsRes = TrackMetadata::readField(f, u8"TAGS");
                 if (tagsRes)
                     for (sys::str& t : tagsRes.move())
-                        sys::meta::append_to(tags, std::move(t));
+                        sys::meta::generic_container_adaptor(tags).append_back(std::move(t));
                 if (tags.size() == 1uz)
                     tags.emplace_back(u8"uncategorized");
                 std::vector<sys::str> aka = TrackMetadata::readField(f, u8"AKA").move_or(std::vector<sys::str> {});
