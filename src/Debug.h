@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Debug.h
+/// @file
 
 // NOLINTBEGIN(portability-template-virtual-member-function, hicpp-signed-bitwise)
 

@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Metadata.h
+/// @file
 
 #include <CompilerWarnings.h>
 #include <StringEx.h>

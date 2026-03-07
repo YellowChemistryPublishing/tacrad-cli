@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Utility.h
+/// @file
 
 #include <ftxui/screen/box.hpp>
 #include <memory>

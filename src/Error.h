@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Error.h
+/// @file
 
 #include <cstddef>
 #include <ios>

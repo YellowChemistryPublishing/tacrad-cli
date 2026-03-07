@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Style.h
+/// @file
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>

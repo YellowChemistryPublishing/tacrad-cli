@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file StatusBar.h
+/// @file
 
 #include <chrono>
 #include <condition_variable>

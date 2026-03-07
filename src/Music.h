@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Music.h
+/// @file
 
 #include <CompilerWarnings.h>
 _nowarn_begin_c_cast();
@@ -14,7 +14,6 @@ _nowarn_begin_c_cast();
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/event.hpp>
-#include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/task.hpp>
 #include <functional>
@@ -391,12 +390,12 @@ public:
             for (const Track& track : MusicPlayer::playlistWithTag(u8"all"))
             {
                 if (pred(track.fullDisplayTitle()))
-                    return std::move(track.file);
+                    return track.file;
                 if (pred(track.titleDisplay))
-                    return std::move(track.file);
+                    return track.file;
                 for (const auto& alt : track.aka)
                     if (pred(sys::cstr(alt)))
-                        return std::move(track.file);
+                        return track.file;
 
                 if (ec)
                     return Error::fromCategory(ec.category());

@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file ThinSlider.h
+/// @file
 
 #include <algorithm>
 #include <cmath>
@@ -10,7 +10,6 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/component/loop.hpp>
 #include <ftxui/component/mouse.hpp>
-#include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/dom/node.hpp>
 #include <ftxui/screen/box.hpp>

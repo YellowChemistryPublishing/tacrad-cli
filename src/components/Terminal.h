@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Terminal.h
+/// @file
 
 #include <cctype>
 #include <chrono>

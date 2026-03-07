@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file CmdInv.inl
+/// @file
 
 #include <algorithm>
 #include <format>

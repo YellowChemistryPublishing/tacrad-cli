@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file Config.h
+/// @file
 
 #include <chrono>
 #include <ftxui/dom/elements.hpp>

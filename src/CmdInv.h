@@ -1,12 +1,10 @@
 #pragma once
 
-/// @file CmdInv.h
+/// @file
 
 #include <cstddef>
 #include <cstdlib>
 #include <format>
-#include <ftxui/component/event.hpp>
-#include <ftxui/component/loop.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <iterator>
 #include <ranges>

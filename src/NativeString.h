@@ -1,6 +1,6 @@
 #pragma once
 
-/// @file NativeString.h
+/// @file
 
 #include <module/sys>
 #include <module/sys.Text>
