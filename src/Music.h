@@ -144,11 +144,11 @@ public:
     MusicPlayer() = delete;
 
     /// @brief Retrieve the index of `track` in `playlist`.
-    /// @note If `track` is not found in `playlist`, `i32::highest()` is returned.
+    /// @note If `track` is not found in `playlist`, `i32::sentinel()` is returned.
     static i32 indexOf(const std::vector<Track>& playlist, const Track& track)
     {
         const auto foundIt = std::ranges::find_if(playlist, [&](const Track& v) { return v == track; });
-        _retif(i32::highest(), foundIt == playlist.end());
+        _retif(i32::sentinel(), foundIt == playlist.end());
         return std::distance(playlist.begin(), foundIt);
     }
 
@@ -214,7 +214,7 @@ public:
         if (MusicPlayer::playlists.empty())
             ret.emplace_back(std::make_error_code(std::errc::no_such_file_or_directory));
 
-        MusicPlayer::currentTrack = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind);
+        MusicPlayer::currentTrack = [val = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind)] { return val != i32::sentinel() ? val : 0_i32; }();
         return ret;
     }
 
@@ -251,7 +251,7 @@ public:
             const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
             reorder(playlist, std::move(tag));
-            MusicPlayer::currentTrack = MusicPlayer::indexOf(playlist, toFind);
+            MusicPlayer::currentTrack = [val = MusicPlayer::indexOf(playlist, toFind)] { return val != i32::sentinel() ? val : 0_i32; }();
         }
         else
             reorder(it->second, std::move(tag));
@@ -493,7 +493,7 @@ public:
             goto Again;
         }
 
-        MusicPlayer::currentTrack = foundIndex < playlist.size() ? i32(foundIndex) : i32::sentinel();
+        MusicPlayer::currentTrack = foundIndex < playlist.size() ? i32(foundIndex) : 0_i32;
         _retif(Error::TrackNotFound, MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= playlist.size());
 
         return MusicPlayer::startMusic(found);

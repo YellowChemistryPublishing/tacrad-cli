@@ -142,7 +142,7 @@ inline void CmdInv::playlist(std::vector<CmdInv::Entry>& history, const std::vec
         _retif(CmdInv::println(history, R"([log.error] Invalid index argument given to "playlist"!)"), ssz(readEnd - cmd[2uz].data()) != sz(cmd[2uz].size()));
 
         const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(MusicPlayer::currentTag);
-        _retif(CmdInv::println(history, R"([log.error] Invalid index argument given to "playlist"!)"), i < 0 || i >= playlist.size());
+        _retif(CmdInv::println(history, R"([log.error] Index argument given to "playlist" out of range!)"), i < 0 || i >= playlist.size());
 
         MusicPlayer::currentTrack = i32(i);
     }
