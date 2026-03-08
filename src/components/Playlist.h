@@ -113,8 +113,6 @@ public:
     void selectedTrack(const i32 val) { this->selected = val; }
     /// @brief Retrieve the currently playing track.
     [[nodiscard]] i32 currentTrack() const { return this->curTrack; }
-    /// @brief Set the currently playing track.
-    void currentTrack(const i32 val) { this->curTrack = val; }
 
     /// @brief Retrieve the associated tag selector component.
     [[nodiscard]] std::shared_ptr<TagSelectorImpl> tagSelector() const { return this->tagSelComp; }

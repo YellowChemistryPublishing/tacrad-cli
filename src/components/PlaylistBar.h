@@ -48,20 +48,13 @@ class PlaylistBarImpl final : public ui::ComponentBase
         }
 
         if (MusicPlayer::loaded() || this->playlistComp->selectedTrack() != 0_i32)
-        {
-            const i32 trackIndex = MusicPlayer::indexOf(playlist, toFind);
-            this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
-            this->playlistComp->selectedTrack(trackIndex);
-        }
+            this->playlistComp->selectedTrack([val = MusicPlayer::indexOf(playlist, toFind)] { return val != i32::sentinel() ? val : 0_i32; }());
         else
-        {
             MusicPlayer::currentTrack = 0_i32;
-            this->playlistComp->currentTrack(0_i32);
-        }
     }
     void searchForTracks()
     {
-        const std::vector<std::error_code> errs = MusicPlayer::searchForTracks();
+        const std::vector<std::error_code> errs = MusicPlayer::searchForTracks(MusicPlayer::loaded() || this->playlistComp->selectedTrack() != 0_i32);
         if (!errs.empty())
         {
             sys::cstr log = "[log.warn] Searching for playable music encountered some errors, playlists may be incomplete!";
