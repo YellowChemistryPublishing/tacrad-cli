@@ -41,11 +41,23 @@ class PlaylistBarImpl final : public ui::ComponentBase
             ? playlist[sz(this->playlistComp->selectedTrack())]
             : MusicPlayer::Track {};
 
-        reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag()), true);
+        if (!reorderTracks(sys::str(this->playlistComp->tagSelector()->selectedTag()), MusicPlayer::loaded() || this->playlistComp->selectedTrack() != 0_i32))
+        {
+            CmdInv::println(this->consoleComp->history, "[log.warn] Failed to reorder playlist.");
+            return;
+        }
 
-        const i32 trackIndex = MusicPlayer::indexOf(playlist, toFind);
-        this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
-        this->playlistComp->selectedTrack(trackIndex);
+        if (MusicPlayer::loaded() || this->playlistComp->selectedTrack() != 0_i32)
+        {
+            const i32 trackIndex = MusicPlayer::indexOf(playlist, toFind);
+            this->playlistComp->currentTrack(MusicPlayer::currentTrack); // Suppress auto-update to playing track, keep selected one highlighted instead.
+            this->playlistComp->selectedTrack(trackIndex);
+        }
+        else
+        {
+            MusicPlayer::currentTrack = 0_i32;
+            this->playlistComp->currentTrack(0_i32);
+        }
     }
     void searchForTracks()
     {
@@ -89,7 +101,6 @@ public:
         playlistComp(std::move(playlistComp)), consoleComp(std::move(console))
     {
         this->searchForTracks();
-        MusicPlayer::currentTrack = 0_i32;
         this->Add(this->containerComp);
     }
 };

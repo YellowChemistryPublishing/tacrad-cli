@@ -28,23 +28,18 @@ class DetailsImpl final : public ui::ComponentBase
 {
     std::shared_ptr<TagSelectorImpl> tagSelectorComp;
     std::shared_ptr<PlaylistImpl> playlistComp;
-    sys::str selectedTag;
-    i32 selectedTrack = 0_i32;
+    MusicPlayer::Track cachedTrack;
     ui::Element cachedElement = ui::text(Config::BlankText);
 
     ui::Component displayComp = ui::Renderer([this]() -> ui::Element
     {
-        if (this->selectedTag == this->tagSelectorComp->selectedTag() && this->selectedTrack == this->playlistComp->selectedTrack()) [[likely]]
-            return this->cachedElement;
-
         const std::vector<MusicPlayer::Track>& playlist = MusicPlayer::playlistWithTag(sys::str(this->tagSelectorComp->selectedTag()));
         _retif(this->cachedElement = ui::text(Config::BlankText), this->playlistComp->selectedTrack() < 0_i32 || this->playlistComp->selectedTrack() >= playlist.size());
 
         const MusicPlayer::Track& track = playlist[sz(this->playlistComp->selectedTrack())];
+        _retif(this->cachedElement, this->cachedTrack == track);
 
-        this->selectedTag = this->tagSelectorComp->selectedTag();
-        this->selectedTrack = this->playlistComp->selectedTrack();
-
+        this->cachedTrack = track;
         return this->cachedElement = ui::vbox(
                    { ui::paragraphAlignLeft(_as(std::string_view, track.titleDisplay)) | ui::bold | ui::underlined,
                      !track.subtitleDisplay.empty() ? (ui::paragraphAlignLeft(_as(std::string_view, track.subtitleDisplay)) | ui::bold) : ui::emptyElement(),
