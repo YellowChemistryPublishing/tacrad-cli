@@ -49,7 +49,7 @@ class PlaylistBarImpl final : public ui::ComponentBase
 
         if (MusicPlayer::loaded() || this->playlistComp->selectedTrack() != 0_i32)
         {
-            i32 i = MusicPlayer::indexOf(playlist, toFind);
+            const i32 i = MusicPlayer::indexOf(playlist, toFind);
             this->playlistComp->selectedTrack(i != i32::sentinel() ? i : 0_i32);
         }
         else

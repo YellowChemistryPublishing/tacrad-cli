@@ -84,12 +84,8 @@ class TerminalImpl final : public ui::ComponentBase
 
     static ui::Element postProcessInput(ui::InputState state)
     {
-        // if (state.focused)
-        // {
-        //     state.element |= ui::focus;
-        //     if (!state.is_placeholder)
-        //         state.element |= ui::focusCursorBlockBlinking;
-        // }
+        if (state.focused && state.is_placeholder)
+            state.element |= ui::focus;
 
         if (state.is_placeholder)
             state.element = ui::hbox({ std::move(state.element) | ui::xflex, ui::text(std::format("{} {}", Config::ApplicationName, Config::VersionIdentifier)) }) |

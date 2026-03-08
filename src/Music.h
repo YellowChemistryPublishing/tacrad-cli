@@ -153,7 +153,7 @@ public:
     }
 
     /// @brief Search and update `MusicPlayer::playlists` with music files recursively in the music directory.
-    [[nodiscard]] static std::vector<std::error_code> searchForTracks(const bool followPrevious = true)
+    [[nodiscard]] static std::vector<std::error_code> searchForTracks(const bool followPrevious = true) /* NOLINT(readability-function-cognitive-complexity) */
     {
         namespace fs = std::filesystem;
 
@@ -216,7 +216,7 @@ public:
 
         if (followPrevious)
         {
-            i32 i = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind);
+            const i32 i = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind);
             MusicPlayer::currentTrack = i != i32::sentinel() ? i : 0_i32;
         }
         else if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= MusicPlayer::currentPlaylist().size())
@@ -257,7 +257,7 @@ public:
             const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
             reorder(playlist, std::move(tag));
-            i32 i = MusicPlayer::indexOf(playlist, toFind);
+            const i32 i = MusicPlayer::indexOf(playlist, toFind);
             MusicPlayer::currentTrack = i != i32::sentinel() ? i : 0_i32;
         }
         else
