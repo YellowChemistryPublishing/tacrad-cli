@@ -215,7 +215,10 @@ public:
             ret.emplace_back(std::make_error_code(std::errc::no_such_file_or_directory));
 
         if (followPrevious)
-            MusicPlayer::currentTrack = [val = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind)] { return val != i32::sentinel() ? val : 0_i32; }();
+        {
+            i32 i = MusicPlayer::indexOf(MusicPlayer::currentPlaylist(), toFind);
+            MusicPlayer::currentTrack = i != i32::sentinel() ? i : 0_i32;
+        }
         else if (MusicPlayer::currentTrack < 0_i32 || MusicPlayer::currentTrack >= MusicPlayer::currentPlaylist().size())
             MusicPlayer::currentTrack = 0_i32;
         return ret;
@@ -254,7 +257,8 @@ public:
             const Track toFind = MusicPlayer::currentTrack >= 0_i32 && MusicPlayer::currentTrack < playlist.size() ? playlist[sz(MusicPlayer::currentTrack)] : Track {};
 
             reorder(playlist, std::move(tag));
-            MusicPlayer::currentTrack = [val = MusicPlayer::indexOf(playlist, toFind)] { return val != i32::sentinel() ? val : 0_i32; }();
+            i32 i = MusicPlayer::indexOf(playlist, toFind);
+            MusicPlayer::currentTrack = i != i32::sentinel() ? i : 0_i32;
         }
         else
         {
