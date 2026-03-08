@@ -21,11 +21,7 @@
         { "name": "check:docgen", "script": "libcxxext/workflows/docgen.py", "with": ["-p=${run_on}"] }
     ],
     "on_push": [
-        {
-            "checkset": "generic-tools",
-            "with":     {"run_on": "linux", "target_arch": "x86_64", "compiler_name": "clang", "config": "Release", "gen": "Ninja", "to_package": "src"},
-            "runs":     { "check:cppfmt": [], "check:docgen": [], "check:cppconf": [], "check:cpppack": ["check:cppconf"] }
-        },
+        { "checkset": "generic-tools", "with": {"run_on": "linux", "target_arch": "x86_64", "compiler_name": "clang", "config": "Release", "gen": "Ninja"}, "runs": {"check:cppfmt": [], "check:docgen": [], "check:cppconf": []} },
         {
             "checkset": "x86_64-linux-clang-debug",
             "with":     {"run_on": "linux", "target_arch": "x86_64", "compiler_name": "clang", "config": "Debug", "gen": "Ninja"},
@@ -33,7 +29,7 @@
         },
         {
             "checkset": "x86_64-linux-clang-relwithdebinfo",
-            "with":     {"run_on": "linux", "target_arch": "x86_64", "compiler_name": "clang", "config": "RelWithDebInfo", "gen": "Ninja", "to_package": "install"},
+            "with":     {"run_on": "linux", "target_arch": "x86_64", "compiler_name": "clang", "config": "RelWithDebInfo", "gen": "Ninja", "to_package": "all"},
             "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         },
         {
@@ -93,7 +89,7 @@
         },
         {
             "checkset": "x86_64-win32-msvc-relwithdebinfo",
-            "with":     {"run_on": "win32", "target_arch": "x86_64", "compiler_name": "msvc", "config": "RelWithDebInfo", "gen": "Visual Studio 17 2022", "to_package": "install"},
+            "with":     {"run_on": "win32", "target_arch": "x86_64", "compiler_name": "msvc", "config": "RelWithDebInfo", "gen": "Visual Studio 17 2022", "to_package": "all"},
             "runs":     { "check:cppconf": [], "check:cppbuild": ["check:cppconf"], "check:cpppack": ["check:cppbuild"] }
         },
         {
