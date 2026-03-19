@@ -141,7 +141,7 @@ class TerminalImpl final : public ui::ComponentBase
             return true;
         }
 
-        if (event.is_mouse() && event.mouse().button == ui::Mouse::Left && this->bounds.Contain(event.mouse().x, event.mouse().y))
+        if (event.is_mouse() && event.mouse().motion == ui::Mouse::Pressed && event.mouse().button == ui::Mouse::Left && this->bounds.Contain(event.mouse().x, event.mouse().y))
         {
             this->TakeFocus();
             return true;
